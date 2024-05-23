@@ -3,15 +3,12 @@ package app
 import (
 	"io"
 
+	"github.com/google/uuid"
 	"perun.network/go-perun/channel"
 )
 
 type VerifyAppData struct {
-	Orders []Order
-}
-
-func (d *VerifyAppData) SendOrder(order Order) {
-
+	Orders []*Order
 }
 
 // Encode encodes app data ([]byte) onto an io.Writer.
@@ -34,4 +31,21 @@ func (d *VerifyAppData) Encode(w io.Writer) error {
 func (d *VerifyAppData) Clone() channel.Data {
 	_d := *d
 	return &_d
+}
+
+func (d *VerifyAppData) SendNewOrder(order *Order) {
+	d.Orders = append(d.Orders, order)
+}
+
+func (d *VerifyAppData) UpdateExistedOrder(orderID uuid.UUID, updatedData OrderUpdatedInfo) {
+	for i := 0; i < len(d.Orders); i++ {
+		if d.Orders[i].OrderID == orderID {
+			if updatedData.Status != "" {
+				d.Orders[i].Status = updatedData.Status
+			}
+			if updatedData.MatchedAmoount != 0 {
+				d.Orders[i].MatchedAmoount = updatedData.MatchedAmoount
+			}
+		}
+	}
 }

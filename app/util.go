@@ -29,6 +29,11 @@ type Order struct {
 	MatchedAmoount float64
 }
 
+type OrderUpdatedInfo struct {
+	Status         string
+	MatchedAmoount float64
+}
+
 func NewOrder(price, amount float64, side bool, owner *wallet.Address) Order {
 	orderId, _ := uuid.NewRandom()
 	return Order{
@@ -69,6 +74,23 @@ func (o *Order) Sign(prvkey ecdsa.PrivateKey) error {
 	o.OwnerSignture = sig
 
 	return nil
+}
+
+func (o *Order) IsValidSignature() bool {
+	orderID, err := o.OrderID.MarshalBinary()
+	if err != nil {
+		return false
+	}
+	data := new(bytes.Buffer)
+	binary.Write(data, binary.LittleEndian, orderID)
+	binary.Write(data, binary.LittleEndian, o.Price)
+	binary.Write(data, binary.LittleEndian, o.Amount)
+	binary.Write(data, binary.LittleEndian, o.Side)
+	binary.Write(data, binary.LittleEndian, o.Owner.Bytes())
+
+	hashedData := crypto.Keccak256Hash(data.Bytes())
+	return crypto.VerifySignature(o.Owner.Bytes(), hashedData.Bytes(), o.OwnerSignture)
+
 }
 
 func (o *Order) Equal(_o *Order) bool {

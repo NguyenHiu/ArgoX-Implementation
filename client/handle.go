@@ -15,31 +15,31 @@ func (c *AppClient) HandleProposal(p client.ChannelProposal, r *client.ProposalR
 		// Ensure that we got a ledger channel proposal.
 		lcp, ok := p.(*client.LedgerChannelProposal)
 		if !ok {
-			return nil, fmt.Errorf("Invalid proposal type: %T\n", p)
+			return nil, fmt.Errorf("invalid proposal type: %T", p)
 		}
 
 		// Ensure the ledger channel proposal includes the expected app.
 		if !lcp.App.Def().Equals(c.app.Def()) {
-			return nil, fmt.Errorf("Invalid app type ")
+			return nil, fmt.Errorf("invalid app type ")
 		}
 
 		// Check that we have the correct number of participants.
 		if lcp.NumPeers() != 2 {
-			return nil, fmt.Errorf("Invalid number of participants: %d", lcp.NumPeers())
+			return nil, fmt.Errorf("invalid number of participants: %d", lcp.NumPeers())
 		}
 
 		// Check that the channel has the expected assets.
 		err := channel.AssetsAssertEqual(lcp.InitBals.Assets, []channel.Asset{c.currency})
 		if err != nil {
-			return nil, fmt.Errorf("Invalid assets: %v\n", err)
+			return nil, fmt.Errorf("invalid assets: %v", err)
 		}
 
 		// Check that the channel has the expected assets and funding balances.
 		const assetIdx, peerIdx = 0, 1
 		if err := channel.AssetsAssertEqual(lcp.InitBals.Assets, []channel.Asset{c.currency}); err != nil {
-			return nil, fmt.Errorf("Invalid assets: %v\n", err)
+			return nil, fmt.Errorf("invalid assets: %v", err)
 		} else if lcp.FundingAgreement[assetIdx][peerIdx].Cmp(c.stake) != 0 {
-			return nil, fmt.Errorf("Invalid funding balance")
+			return nil, fmt.Errorf("invalid funding balance")
 		}
 		return lcp, nil
 	}()
