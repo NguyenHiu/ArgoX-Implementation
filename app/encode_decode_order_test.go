@@ -23,6 +23,10 @@ func TestEncodeDecodeOrder(t *testing.T) {
 	decodedOrder, _ := DecodeOrder(encodedData)
 	fmt.Printf("decoded order: %v\n", decodedOrder)
 
+	if order.OrderID != decodedOrder.OrderID {
+		t.Errorf("Expected OrderID: %v, got %v", order.OrderID, decodedOrder.OrderID)
+	}
+
 	if order.Price != decodedOrder.Price {
 		t.Errorf("Expected Price: %f, got %f", order.Price, decodedOrder.Price)
 	}
@@ -42,4 +46,9 @@ func TestEncodeDecodeOrder(t *testing.T) {
 	if order.Status != decodedOrder.Status {
 		t.Errorf("Expected Status: %v, got %v", order.Status, decodedOrder.Status)
 	}
+
+	if order.MatchedAmoount != decodedOrder.MatchedAmoount {
+		t.Errorf("Expected MatchedAmoount: %v, got %v", order.MatchedAmoount, decodedOrder.MatchedAmoount)
+	}
+
 }

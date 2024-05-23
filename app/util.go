@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/google/uuid"
 	"perun.network/go-perun/backend/ethereum/wallet"
 )
 
@@ -16,21 +17,36 @@ const (
 )
 
 type Order struct {
-	Price  float64
-	Amount float64
-	Side   bool
-	Owner  *wallet.Address
-	Status string
+	OrderID        uuid.UUID
+	Price          float64
+	Amount         float64
+	Side           bool
+	Owner          *wallet.Address
+	Status         string
+	MatchedAmoount float64
 }
 
 func NewOrder(price, amount float64, side bool, owner *wallet.Address) Order {
+	orderId, _ := uuid.NewRandom()
 	return Order{
-		Price:  price,
-		Amount: amount,
-		Side:   side,
-		Owner:  owner,
-		Status: "C", // Rename later
+		OrderID:        orderId,
+		Price:          price,
+		Amount:         amount,
+		Side:           side,
+		Owner:          owner,
+		Status:         "C", // Replace later
+		MatchedAmoount: 0,
 	}
+}
+
+func (o *Order) Equal(_o *Order) bool {
+	return (o.OrderID == _o.OrderID &&
+		o.Price == _o.Price &&
+		o.Amount == _o.Amount &&
+		o.Side == _o.Side &&
+		o.Owner.Cmp(_o.Owner) == 0 &&
+		o.Status == _o.Status &&
+		o.MatchedAmoount == _o.MatchedAmoount)
 }
 
 // Encode Order
@@ -38,7 +54,16 @@ func NewOrder(price, amount float64, side bool, owner *wallet.Address) Order {
 func (o *Order) EncodeOrder() []byte {
 	buf := new(bytes.Buffer)
 
-	err := binary.Write(buf, binary.LittleEndian, o.Price)
+	orderID, err := o.OrderID.MarshalBinary()
+	if err != nil {
+		fmt.Println("invalid uuid")
+	}
+	err = binary.Write(buf, binary.LittleEndian, orderID)
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+
+	err = binary.Write(buf, binary.LittleEndian, o.Price)
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
@@ -62,6 +87,11 @@ func (o *Order) EncodeOrder() []byte {
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
+
+	err = binary.Write(buf, binary.LittleEndian, o.MatchedAmoount)
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
 	return buf.Bytes()
 }
 
@@ -71,7 +101,17 @@ func DecodeOrder(data []byte) (*Order, error) {
 	order := Order{}
 	buf := bytes.NewBuffer(data)
 
-	err := binary.Read(buf, binary.LittleEndian, &order.Price)
+	orderIDTemp := make([]byte, 16)
+	err := binary.Read(buf, binary.LittleEndian, &orderIDTemp)
+	if err != nil {
+		return nil, err
+	}
+	err = order.OrderID.UnmarshalBinary(orderIDTemp)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Read(buf, binary.LittleEndian, &order.Price)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +138,11 @@ func DecodeOrder(data []byte) (*Order, error) {
 		return nil, err
 	}
 	order.Status = string(status_temp)
+
+	err = binary.Read(buf, binary.LittleEndian, &order.MatchedAmoount)
+	if err != nil {
+		return nil, err
+	}
 
 	return &order, nil
 }
