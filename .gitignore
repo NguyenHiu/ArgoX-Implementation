@@ -37,3 +37,5 @@ bin/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+contracts/perun-eth-contracts
