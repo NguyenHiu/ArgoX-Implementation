@@ -16,6 +16,10 @@ func TestEncodeDecodeOrder(t *testing.T) {
 	owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*pubkey))
 
 	order := NewOrder(10.0, 5.0, BID, owner)
+	err := order.Sign(*prvkey)
+	if err != nil {
+		t.Errorf("Sign order error, err: %v\n", err)
+	}
 
 	encodedData := order.EncodeOrder()
 	fmt.Printf("encoded order: %v\n", encodedData)
