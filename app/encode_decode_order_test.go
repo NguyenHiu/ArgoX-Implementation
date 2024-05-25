@@ -2,7 +2,6 @@ package app
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"perun.network/go-perun/backend/ethereum/wallet"
@@ -15,28 +14,28 @@ func TestEncodeDecodeOrder(t *testing.T) {
 	pubkey, _ := prvkey.Public().(*ecdsa.PublicKey)
 	owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*pubkey))
 
-	order := NewOrder(10.0, 5.0, BID, owner)
+	order := NewOrder(10, 5, BID, owner, "P")
 	err := order.Sign(*prvkey)
 	if err != nil {
 		t.Errorf("Sign order error, err: %v\n", err)
 	}
 
 	encodedData := order.EncodeOrder()
-	fmt.Printf("encoded order: %v\n", encodedData)
+	t.Logf("encoded order: %v\n", encodedData)
 
 	decodedOrder, _ := DecodeOrder(encodedData)
-	fmt.Printf("decoded order: %v\n", decodedOrder)
+	t.Logf("decoded order: %v\n", decodedOrder)
 
 	if order.OrderID != decodedOrder.OrderID {
 		t.Errorf("Expected OrderID: %v, got %v", order.OrderID, decodedOrder.OrderID)
 	}
 
 	if order.Price != decodedOrder.Price {
-		t.Errorf("Expected Price: %f, got %f", order.Price, decodedOrder.Price)
+		t.Errorf("Expected Price: %v, got %v", order.Price, decodedOrder.Price)
 	}
 
 	if order.Amount != decodedOrder.Amount {
-		t.Errorf("Expected Amount: %f, got %f", order.Amount, decodedOrder.Amount)
+		t.Errorf("Expected Amount: %v, got %v", order.Amount, decodedOrder.Amount)
 	}
 
 	if order.Side != decodedOrder.Side {
