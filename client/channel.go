@@ -47,3 +47,16 @@ func (g *VerifyChannel) UpdateExistedOrder(orderID uuid.UUID, updatedData app.Or
 		panic(err) // We panic on error to keep the code simple.
 	}
 }
+
+// Settle settles the app channel and withdraws the funds.
+func (g *VerifyChannel) Settle() {
+	// Channel should be finalized through last ("winning") move.
+	// No need to set `isFinal` here.
+	err := g.ch.Settle(context.TODO(), false)
+	if err != nil {
+		panic(err)
+	}
+
+	// Cleanup.
+	g.ch.Close()
+}
