@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"unsafe"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/wallet"
 )
@@ -41,20 +41,18 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 		log.Fatal(err)
 	}
 
-	// order length
-	ol := int(unsafe.Sizeof(Order{}))
 	// no orders
-	no := len(data) / int(ol)
+	no := len(data) / ORDER_SIZE
 	if int(no) != no {
 		log.Fatal("Decode(): decoding suspicious data\n")
 	}
 
 	// decode each order
 	for i := 0; i < no; i++ {
-		order_data := data[i*ol : (i+1)*ol]
+		order_data := data[i*ORDER_SIZE : (i+1)*ORDER_SIZE]
 		order, err := DecodeOrder(order_data)
 		if err != nil {
-			log.Fatalf("Decode(): decoding an invalid order, index: %v\n", i)
+			log.Fatalf("Decode(): decoding an invalid order, index: %v, error: %v\n", i, err)
 		}
 		d.Orders = append(d.Orders, order)
 	}
@@ -111,7 +109,7 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 
 		for i := 0; i < len(fromData.Orders); i++ {
 			if !fromData.Orders[i].Equal(toData.Orders[i]) {
-				return fmt.Errorf("Invalid state")
+				return fmt.Errorf("invalid state")
 			}
 		}
 
@@ -136,12 +134,24 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 				fromData.Orders[i].Owner.Cmp(toData.Orders[i].Owner) != 0 ||
 				fromData.Orders[i].MatchedAmoount > toData.Orders[i].MatchedAmoount {
 				return fmt.Errorf("exist an invalid change at %v", i)
-
 			}
 		}
 
 	} else {
 		return fmt.Errorf("invalid state change (missing order(s))")
+	}
+
+	isFinal := toData.CheckFinal()
+	if isFinal != to.IsFinal {
+		return fmt.Errorf("final flag: expected %v, got %v", to.IsFinal, isFinal)
+	}
+
+	expectedAllocation := from.Allocation.Clone()
+	if isFinal {
+		expectedAllocation.Balances = computeFinalBalances(toData.Orders, from.Balances)
+	}
+	if err := expectedAllocation.Equal(&to.Allocation); err != nil {
+		return errors.WithMessagef(err, "wrong allocation: expected %v, got %v", expectedAllocation, to.Allocation)
 	}
 
 	return nil
@@ -154,6 +164,12 @@ func (a *VerifyApp) SendNewOrder(s *channel.State, order *Order) error {
 	}
 
 	d.SendNewOrder(order)
+
+	if order.Status == "F" {
+		s.IsFinal = true
+		s.Balances = computeFinalBalances(d.Orders, s.Balances)
+	}
+	fmt.Printf("Sending Order, got status, isfinal: %v\n", s.IsFinal)
 
 	return nil
 }

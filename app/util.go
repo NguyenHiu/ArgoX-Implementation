@@ -5,10 +5,12 @@ import (
 	"crypto/ecdsa"
 	"encoding/binary"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	"perun.network/go-perun/backend/ethereum/wallet"
+	"perun.network/go-perun/channel"
 )
 
 const (
@@ -16,25 +18,28 @@ const (
 	BID           = false
 	STATUS_LENGTH = 1
 	numParts      = 2
+	ORDER_SIZE    = 127
 )
 
 type Order struct {
 	OrderID        uuid.UUID
-	Price          float64
-	Amount         float64
+	Price          int64
+	Amount         int64
 	Side           bool
 	Owner          *wallet.Address
 	OwnerSignture  []byte
 	Status         string
-	MatchedAmoount float64
+	MatchedAmoount int64
 }
 
 type OrderUpdatedInfo struct {
 	Status         string
-	MatchedAmoount float64
+	MatchedAmoount int64
 }
 
-func NewOrder(price, amount float64, side bool, owner *wallet.Address) Order {
+// The `status` parameter should be "P" at the init phase,
+// but allowing the `status` parameter to be passed is for testing purposes.
+func NewOrder(price, amount int64, side bool, owner *wallet.Address, status string) Order {
 	orderId, _ := uuid.NewRandom()
 	return Order{
 		OrderID:        orderId,
@@ -43,7 +48,7 @@ func NewOrder(price, amount float64, side bool, owner *wallet.Address) Order {
 		Side:           side,
 		Owner:          owner,
 		OwnerSignture:  []byte{},
-		Status:         "C", // Replace later
+		Status:         status, // Replace later
 		MatchedAmoount: 0,
 	}
 }
@@ -87,9 +92,20 @@ func (o *Order) IsValidSignature() bool {
 	binary.Write(data, binary.LittleEndian, o.Amount)
 	binary.Write(data, binary.LittleEndian, o.Side)
 	binary.Write(data, binary.LittleEndian, o.Owner.Bytes())
-
 	hashedData := crypto.Keccak256Hash(data.Bytes())
-	return crypto.VerifySignature(o.Owner.Bytes(), hashedData.Bytes(), o.OwnerSignture)
+
+	pub, err := crypto.SigToPub(hashedData.Bytes(), o.OwnerSignture)
+	if err != nil {
+		fmt.Printf("Cannot recover public key from signature, error: %v\n", err)
+		return false
+	}
+	_owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*pub))
+	if _owner.Cmp(o.Owner) != 0 {
+		fmt.Println("Provided public key does not match with the order's owner")
+		return false
+	}
+	pubBytes := crypto.FromECDSAPub(pub)
+	return crypto.VerifySignature(pubBytes, hashedData.Bytes(), o.OwnerSignture[:len(o.OwnerSignture)-1])
 
 }
 
@@ -211,4 +227,36 @@ func DecodeOrder(data []byte) (*Order, error) {
 	}
 
 	return &order, nil
+}
+
+func (d *VerifyAppData) CheckFinal() bool {
+	l := len(d.Orders)
+	return l != 0 && d.Orders[l-1].Status == "F"
+}
+
+func computeFinalBalances(orders []*Order, bals channel.Balances) channel.Balances {
+	matcherReceivedAmount := int64(0)
+
+	for i := 0; i < len(orders); i++ {
+		// if orders[i].Status == "M" {
+		if orders[i].Status != "F" {
+			if !orders[i].Side {
+				matcherReceivedAmount += orders[i].Price
+			} else {
+				matcherReceivedAmount -= orders[i].Price
+			}
+		}
+		// }
+	}
+
+	fmt.Printf("matcherReceivedAmount: %v\n", matcherReceivedAmount)
+
+	finalBals := bals.Clone()
+	for i := range finalBals {
+		bigIntAmount := big.NewInt(matcherReceivedAmount)
+		finalBals[i][0] = new(big.Int).Sub(bals[i][0], bigIntAmount)
+		finalBals[i][1] = new(big.Int).Add(bals[i][1], bigIntAmount)
+	}
+
+	return finalBals
 }
