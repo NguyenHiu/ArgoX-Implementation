@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -22,8 +23,8 @@ import (
 type AppClient struct {
 	perunClient *client.Client
 	account     wallet.Address
-	currency    channel.Asset
-	stake       channel.Bal
+	currencies  []channel.Asset
+	stakes      []channel.Bal
 	app         *app.VerifyApp
 	channels    chan *VerifyChannel
 }
@@ -36,9 +37,9 @@ func SetupAppClient(
 	nodeURL string, // nodeURL is the URL of the blockchain node.
 	chainID uint64, // chainID is the identifier of the blockchain.
 	adjudicator common.Address, // adjudicator is the address of the adjudicator.
-	asset ethwallet.Address, // asset is the address of the asset holder for our app channels.
+	assets []ethwallet.Address, // assets are the address of the asset holder for our app channels.
 	app *app.VerifyApp, // app is the channel app we want to set up the client with.
-	stake channel.Bal, // stake is the balance the client is willing to fund the channel with.
+	stakes []channel.Bal, // stake is the balance the client is willing to fund the channel with.
 ) (*AppClient, error) {
 	// Create Ethereum client and contract backend.
 	cb, err := CreateContractBackend(nodeURL, chainID, w)
@@ -51,16 +52,22 @@ func SetupAppClient(
 	if err != nil {
 		return nil, fmt.Errorf("validating adjudicator: %w", err)
 	}
-	err = ethchannel.ValidateAssetHolderETH(context.TODO(), cb, common.Address(asset), adjudicator)
+	err = ethchannel.ValidateAssetHolderETH(context.TODO(), cb, common.Address(assets[constants.ETH]), adjudicator)
 	if err != nil {
-		return nil, fmt.Errorf("validating adjudicator: %w", err)
+		return nil, fmt.Errorf("validating asset holder: %w", err)
+	}
+	err = ethchannel.ValidateAssetHolderERC20(context.TODO(), cb, common.Address(assets[constants.GVN]), adjudicator, common.HexToAddress(constants.GAVIN_TOKEN_ADDRESS))
+	if err != nil {
+		return nil, fmt.Errorf("validating asset holder erc20: %w", err)
 	}
 
 	// Setup funder.
 	funder := ethchannel.NewFunder(cb)
 	dep := ethchannel.NewETHDepositor()
 	ethAcc := accounts.Account{Address: acc}
-	funder.RegisterAsset(asset, dep, ethAcc)
+	funder.RegisterAsset(assets[constants.ETH], dep, ethAcc)
+	depERC20 := ethchannel.NewERC20Depositor(common.HexToAddress(constants.GAVIN_TOKEN_ADDRESS))
+	funder.RegisterAsset(assets[constants.GVN], depERC20, ethAcc)
 
 	// Setup adjudicator.
 	adj := ethchannel.NewAdjudicator(cb, adjudicator, acc, ethAcc)
@@ -78,12 +85,17 @@ func SetupAppClient(
 		return nil, errors.WithMessage(err, "creating client")
 	}
 
+	assetsCoverted := []channel.Asset{}
+	for _, asset := range assets {
+		assetsCoverted = append(assetsCoverted, &asset)
+	}
+
 	// Create client and start request handler.
 	c := &AppClient{
 		perunClient: perunClient,
 		account:     waddr,
-		currency:    &asset,
-		stake:       stake,
+		currencies:  assetsCoverted,
+		stakes:      stakes,
 		app:         app,
 		channels:    make(chan *VerifyChannel, 1),
 	}
@@ -109,10 +121,14 @@ func (c *AppClient) OpenAppChannel(peer wire.Address) *VerifyChannel {
 	participants := []wire.Address{c.account, peer}
 
 	// We create an initial allocation which defines the starting balances.
-	initAlloc := channel.NewAllocation(2, c.currency)
-	initAlloc.SetAssetBalances(c.currency, []channel.Bal{
-		c.stake, // Our initial balance.
-		c.stake, // Peer's initial balance.
+	initAlloc := channel.NewAllocation(2, c.currencies...)
+	initAlloc.SetAssetBalances(c.currencies[constants.ETH], []channel.Bal{
+		c.stakes[constants.ETH],
+		c.stakes[constants.ETH],
+	})
+	initAlloc.SetAssetBalances(c.currencies[constants.GVN], []channel.Bal{
+		c.stakes[constants.GVN],
+		c.stakes[constants.GVN],
 	})
 
 	// Prepare the channel proposal by defining the channel parameters.

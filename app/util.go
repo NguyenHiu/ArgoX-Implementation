@@ -7,18 +7,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	"perun.network/go-perun/backend/ethereum/wallet"
 	"perun.network/go-perun/channel"
-)
-
-const (
-	ASK           = true
-	BID           = false
-	STATUS_LENGTH = 1
-	numParts      = 2
-	ORDER_SIZE    = 127
 )
 
 type Order struct {
@@ -235,28 +228,30 @@ func (d *VerifyAppData) CheckFinal() bool {
 }
 
 func computeFinalBalances(orders []*Order, bals channel.Balances) channel.Balances {
-	matcherReceivedAmount := int64(0)
+	matcherReceivedETH := int64(0)
+	matcherReceivedGAV := int64(0)
 
 	for i := 0; i < len(orders); i++ {
 		// if orders[i].Status == "M" {
 		if orders[i].Status != "F" {
-			if !orders[i].Side {
-				matcherReceivedAmount += orders[i].Price
+			if orders[i].Side == constants.BID {
+				matcherReceivedETH += orders[i].Price
+				matcherReceivedGAV -= orders[i].Amount
 			} else {
-				matcherReceivedAmount -= orders[i].Price
+				matcherReceivedETH -= orders[i].Price
+				matcherReceivedGAV += orders[i].Amount
 			}
 		}
 		// }
 	}
 
-	fmt.Printf("matcherReceivedAmount: %v\n", matcherReceivedAmount)
-
 	finalBals := bals.Clone()
-	for i := range finalBals {
-		bigIntAmount := big.NewInt(matcherReceivedAmount)
-		finalBals[i][0] = new(big.Int).Sub(bals[i][0], bigIntAmount)
-		finalBals[i][1] = new(big.Int).Add(bals[i][1], bigIntAmount)
-	}
+	noETH := big.NewInt(matcherReceivedETH)
+	noGAV := big.NewInt(matcherReceivedGAV)
+	finalBals[constants.ETH][constants.MATCHER] = new(big.Int).Add(bals[constants.ETH][constants.MATCHER], noETH)
+	finalBals[constants.ETH][constants.TRADER] = new(big.Int).Sub(bals[constants.ETH][constants.TRADER], noETH)
+	finalBals[constants.GVN][constants.MATCHER] = new(big.Int).Add(bals[constants.GVN][constants.MATCHER], noGAV)
+	finalBals[constants.GVN][constants.TRADER] = new(big.Int).Sub(bals[constants.GVN][constants.TRADER], noGAV)
 
 	return finalBals
 }

@@ -29,17 +29,23 @@ func (c *AppClient) HandleProposal(p client.ChannelProposal, r *client.ProposalR
 		}
 
 		// Check that the channel has the expected assets.
-		err := channel.AssetsAssertEqual(lcp.InitBals.Assets, []channel.Asset{c.currency})
+		err := channel.AssetsAssertEqual(lcp.InitBals.Assets, c.currencies)
 		if err != nil {
 			return nil, fmt.Errorf("invalid assets: %v", err)
 		}
 
 		// Check that the channel has the expected assets and funding balances.
-		const assetIdx, peerIdx = 0, 1
-		if err := channel.AssetsAssertEqual(lcp.InitBals.Assets, []channel.Asset{c.currency}); err != nil {
+		if err := channel.AssetsAssertEqual(lcp.InitBals.Assets, c.currencies); err != nil {
 			return nil, fmt.Errorf("invalid assets: %v", err)
-		} else if lcp.FundingAgreement[assetIdx][peerIdx].Cmp(c.stake) != 0 {
-			return nil, fmt.Errorf("invalid funding balance")
+		}
+
+		// const assetIdx, peerIdx = 0, 1
+		for i := range lcp.NumPeers() {
+			for idx := range c.currencies {
+				if lcp.FundingAgreement[idx][i].Cmp(c.stakes[idx]) != 0 {
+					return nil, fmt.Errorf("invalid funding balance")
+				}
+			}
 		}
 		return lcp, nil
 	}()

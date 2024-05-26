@@ -7,6 +7,7 @@ import (
 
 	App "github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	"perun.network/go-perun/wire"
@@ -25,16 +26,20 @@ const (
 func main() {
 	// Deploy contracts.
 	log.Println("Deploying contracts.")
-	adjudicator, assetHolder, appAddress := deployContracts(chainURL, chainID, keyDeployer)
-	asset := *ethwallet.AsWalletAddr(assetHolder)
+	adjudicator, assetHolders, appAddress := deployContracts(chainURL, chainID, keyDeployer)
 	app := App.NewVerifyApp(ethwallet.AsWalletAddr(appAddress))
+
+	ethwalletAssetHolders := []ethwallet.Address{}
+	for _, asset := range assetHolders {
+		ethwalletAssetHolders = append(ethwalletAssetHolders, *ethwallet.AsWalletAddr(asset))
+	}
 
 	// Setup clients.
 	log.Println("Setting up clients.")
 	bus := wire.NewLocalBus() // Message bus used for off-chain communication.
-	stake := client.EthToWei(big.NewFloat(5))
-	alice := SetupClient(bus, chainURL, adjudicator, asset, keyAlice, app, stake)
-	bob := SetupClient(bus, chainURL, adjudicator, asset, keyBob, app, stake)
+	stakes := []*big.Int{client.EthToWei(big.NewFloat(5)), big.NewInt(5)}
+	alice := SetupClient(bus, chainURL, adjudicator, ethwalletAssetHolders, keyAlice, app, stakes)
+	bob := SetupClient(bus, chainURL, adjudicator, ethwalletAssetHolders, keyBob, app, stakes)
 
 	// Print balances before transactions.
 	l := newBalanceLogger(chainURL)
@@ -45,7 +50,7 @@ func main() {
 	appAlice := alice.OpenAppChannel(bob.WireAddress())
 	appBob := bob.AcceptedChannel()
 
-	newOrder := App.NewOrder(client.EthToWei(big.NewFloat(5)).Int64(), 5, App.BID, alice.WalletAddressAsEthwallet(), "P")
+	newOrder := App.NewOrder(client.EthToWei(big.NewFloat(5)).Int64(), 5, constants.BID, alice.WalletAddressAsEthwallet(), "P")
 	alicePrvKey, err := crypto.HexToECDSA(keyAlice)
 	if err != nil {
 		panic(err)
@@ -53,7 +58,7 @@ func main() {
 	newOrder.Sign(*alicePrvKey)
 	appAlice.SendNewOrder(&newOrder)
 
-	lastOrder := App.NewOrder(0, 0, App.BID, alice.WalletAddressAsEthwallet(), "F")
+	lastOrder := App.NewOrder(0, 0, constants.BID, alice.WalletAddressAsEthwallet(), "F")
 	lastOrder.Sign(*alicePrvKey)
 	appAlice.SendNewOrder(&lastOrder)
 

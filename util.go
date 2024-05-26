@@ -7,6 +7,7 @@ import (
 
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/verifierApp"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,7 +22,7 @@ import (
 	"perun.network/go-perun/wire"
 )
 
-func deployContracts(nodeURL string, chainID uint64, privatekey string) (adj, ah, app common.Address) {
+func deployContracts(nodeURL string, chainID uint64, privatekey string) (adj common.Address, ahs []common.Address, app common.Address) {
 	k, err := crypto.HexToECDSA(privatekey)
 	if err != nil {
 		panic(err)
@@ -40,11 +41,19 @@ func deployContracts(nodeURL string, chainID uint64, privatekey string) (adj, ah
 		panic(err)
 	}
 
+	ahs = []common.Address{}
 	// Deploy asset holder
-	ah, err = ethchannel.DeployETHAssetholder(context.TODO(), cb, adj, acc)
+	ah, err := ethchannel.DeployETHAssetholder(context.TODO(), cb, adj, acc)
 	if err != nil {
 		panic(err)
 	}
+	ahs = append(ahs, ah)
+	// Deploy Gavin asset holder
+	ga, err := ethchannel.DeployERC20Assetholder(context.TODO(), cb, adj, common.HexToAddress(constants.GAVIN_TOKEN_ADDRESS), acc)
+	if err != nil {
+		panic(err)
+	}
+	ahs = append(ahs, ga)
 
 	// Create a transactor
 	const gasLimit = 1100000
@@ -65,17 +74,17 @@ func deployContracts(nodeURL string, chainID uint64, privatekey string) (adj, ah
 		panic(err)
 	}
 
-	return adj, ah, app
+	return adj, ahs, app
 }
 
 func SetupClient(
 	bus wire.Bus,
 	nodeURL string,
 	adjudicator common.Address,
-	asset ethwallet.Address,
+	assets []ethwallet.Address,
 	privateKey string,
 	app *app.VerifyApp,
-	stake channel.Bal,
+	stakes []channel.Bal,
 ) *client.AppClient {
 	k, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
@@ -92,9 +101,9 @@ func SetupClient(
 		nodeURL,
 		chainID,
 		adjudicator,
-		asset,
+		assets,
 		app,
-		stake,
+		stakes,
 	)
 	if err != nil {
 		panic(err)
