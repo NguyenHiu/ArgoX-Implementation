@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"testing"
 
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/crypto"
 	"perun.network/go-perun/backend/ethereum/wallet"
 )
@@ -11,7 +12,7 @@ import (
 func TestSignAndVerifyOrderSignature(t *testing.T) {
 	var price int64 = 10
 	var amount int64 = 5
-	side := BID
+	side := constants.BID
 	k, _ := crypto.GenerateKey()
 	p, _ := k.Public().(*ecdsa.PublicKey)
 	owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*p))

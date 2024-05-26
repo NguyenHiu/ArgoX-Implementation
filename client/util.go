@@ -3,6 +3,7 @@ package client
 import (
 	"math/big"
 
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -10,10 +11,6 @@ import (
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	swallet "perun.network/go-perun/backend/ethereum/wallet/simple"
 	"perun.network/go-perun/wire"
-)
-
-const (
-	txFinalityDepth = 1 // Number of blocks required to confirm a transaction.
 )
 
 func CreateContractBackend(
@@ -29,7 +26,7 @@ func CreateContractBackend(
 		return ethchannel.ContractBackend{}, err
 	}
 
-	return ethchannel.NewContractBackend(ethClient, transactor, txFinalityDepth), nil
+	return ethchannel.NewContractBackend(ethClient, transactor, constants.TX_FINALITY_DEPTH), nil
 }
 
 // WalletAddress returns the wallet address of the client.

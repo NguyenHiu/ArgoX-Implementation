@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"perun.network/go-perun/channel"
@@ -42,14 +43,14 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 	}
 
 	// no orders
-	no := len(data) / ORDER_SIZE
+	no := len(data) / constants.ORDER_SIZE
 	if int(no) != no {
 		log.Fatal("Decode(): decoding suspicious data\n")
 	}
 
 	// decode each order
 	for i := 0; i < no; i++ {
-		order_data := data[i*ORDER_SIZE : (i+1)*ORDER_SIZE]
+		order_data := data[i*constants.ORDER_SIZE : (i+1)*constants.ORDER_SIZE]
 		order, err := DecodeOrder(order_data)
 		if err != nil {
 			log.Fatalf("Decode(): decoding an invalid order, index: %v, error: %v\n", i, err)
@@ -62,8 +63,8 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 
 // ValidInit checks that the initial state is valid.
 func (a *VerifyApp) ValidInit(p *channel.Params, s *channel.State) error {
-	if len(p.Parts) != numParts {
-		return fmt.Errorf("invalid number of participants: expected %d, got %d", numParts, len(p.Parts))
+	if len(p.Parts) != constants.NUM_PARTS {
+		return fmt.Errorf("invalid number of participants: expected %d, got %d", constants.NUM_PARTS, len(p.Parts))
 	}
 
 	appData, ok := s.Data.(*VerifyAppData)
