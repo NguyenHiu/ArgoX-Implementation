@@ -15,4 +15,8 @@ const { ethers } = require("hardhat");
     await (
         await token.mint(signers[2].address, 100)
     ).wait()
+
+    await (
+        await token.mint(signers[3].address, 100)
+    ).wait()
 })()
