@@ -1,4 +1,4 @@
-package main
+package constants
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"perun.network/go-perun/wire"
 )
 
-func deployContracts(nodeURL string, chainID uint64, privatekey string) (adj common.Address, ahs []common.Address, app common.Address) {
+func DeployContracts(nodeURL string, chainID uint64, privatekey string) (adj common.Address, ahs []common.Address, app common.Address) {
 	k, err := crypto.HexToECDSA(privatekey)
 	if err != nil {
 		panic(err)
@@ -99,7 +99,7 @@ func SetupClient(
 		w,
 		acc,
 		nodeURL,
-		chainID,
+		constants.CHAIN_ID,
 		adjudicator,
 		assets,
 		app,
@@ -118,7 +118,7 @@ type balanceLogger struct {
 }
 
 // newBalanceLogger creates a new balance logger for the specified ledger.
-func newBalanceLogger(chainURL string) balanceLogger {
+func NewBalanceLogger(chainURL string) balanceLogger {
 	c, err := ethclient.Dial(chainURL)
 	if err != nil {
 		panic(err)
