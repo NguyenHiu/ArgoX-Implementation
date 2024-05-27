@@ -106,6 +106,10 @@ func SetupAppClient(
 	return c, nil
 }
 
+func (c *AppClient) EthWalletAddress() *ethwallet.Address {
+	return ethwallet.AsWalletAddr(common.Address(c.account.Bytes()))
+}
+
 // startWatching starts the dispute watcher for the specified channel.
 func (c *AppClient) startWatching(ch *client.Channel) {
 	go func() {

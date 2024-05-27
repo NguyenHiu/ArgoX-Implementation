@@ -10,7 +10,6 @@ import (
 	ethchannel "perun.network/go-perun/backend/ethereum/channel"
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	swallet "perun.network/go-perun/backend/ethereum/wallet/simple"
-	"perun.network/go-perun/wire"
 )
 
 func CreateContractBackend(
@@ -44,8 +43,8 @@ func (c *AppClient) WalletAddressAsEthwallet() *ethwallet.Address {
 }
 
 // WireAddress returns the wire address of the client.
-func (c *AppClient) WireAddress() wire.Address {
-	return c.account
+func (c *AppClient) WireAddress() *ethwallet.Address {
+	return ethwallet.AsWalletAddr(common.Address(c.account.Bytes()))
 }
 
 // EthToWei converts a given amount in ETH to Wei.
