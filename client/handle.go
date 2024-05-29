@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/NguyenHiu/lightning-exchange/app"
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/client"
 )
@@ -74,6 +75,15 @@ func (c *AppClient) HandleProposal(p client.ChannelProposal, r *client.ProposalR
 func (c *AppClient) HandleUpdate(cur *channel.State, next client.ChannelUpdate, r *client.UpdateResponder) {
 	// Perun automatically checks that the transition is valid.
 	// We always accept.
+
+	fromData := cur.Data.(*app.VerifyAppData)
+	toData := next.State.Data.(*app.VerifyAppData)
+	if c.UseTrigger && len(fromData.Orders) < len(toData.Orders) {
+		for i := len(fromData.Orders); i < len(toData.Orders); i++ {
+			c.TriggerChannel <- toData.Orders[i]
+		}
+	}
+
 	err := r.Accept(context.TODO())
 	if err != nil {
 		panic(err)

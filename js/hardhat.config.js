@@ -8,8 +8,9 @@ task("balances", "")
 
     const token = await ethers.getContractAt("Token", args.ta)
 
-    aliceBal = await token.balanceOf(signers[1].address)
-    bobBal = await token.balanceOf(signers[2].address)
+    // aliceBal = await token.balanceOf(signers[1].address)
+    aliceBal = await token.balanceOf(signers[2].address)
+    bobBal = await token.balanceOf(signers[3].address)
 
     console.log(`Alice: ${aliceBal}`);
     console.log(`Bob: ${bobBal}`);

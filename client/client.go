@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
+	App "github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,12 +22,14 @@ import (
 )
 
 type AppClient struct {
-	perunClient *client.Client
-	account     wallet.Address
-	currencies  []channel.Asset
-	stakes      []channel.Bal
-	app         *app.VerifyApp
-	channels    chan *VerifyChannel
+	perunClient    *client.Client
+	account        wallet.Address
+	currencies     []channel.Asset
+	stakes         []channel.Bal
+	app            *app.VerifyApp
+	channels       chan *VerifyChannel
+	UseTrigger     bool
+	TriggerChannel chan *App.Order
 }
 
 // SetupAppClient creates a new app client.
@@ -40,6 +43,7 @@ func SetupAppClient(
 	assets []ethwallet.Address, // assets are the address of the asset holder for our app channels.
 	app *app.VerifyApp, // app is the channel app we want to set up the client with.
 	stakes []channel.Bal, // stake is the balance the client is willing to fund the channel with.
+	useTrigger bool,
 ) (*AppClient, error) {
 	// Create Ethereum client and contract backend.
 	cb, err := CreateContractBackend(nodeURL, chainID, w)
@@ -92,12 +96,14 @@ func SetupAppClient(
 
 	// Create client and start request handler.
 	c := &AppClient{
-		perunClient: perunClient,
-		account:     waddr,
-		currencies:  assetsCoverted,
-		stakes:      stakes,
-		app:         app,
-		channels:    make(chan *VerifyChannel, 1),
+		perunClient:    perunClient,
+		account:        waddr,
+		currencies:     assetsCoverted,
+		stakes:         stakes,
+		app:            app,
+		channels:       make(chan *VerifyChannel, 1),
+		UseTrigger:     useTrigger,
+		TriggerChannel: make(chan *App.Order),
 	}
 
 	channel.RegisterApp(app)

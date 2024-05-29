@@ -20,6 +20,11 @@ type ClientConfig struct {
 	VerifyChannel *client.VerifyChannel
 }
 
+type MatcherOrder struct {
+	Data  *app.Order
+	Owner uuid.UUID
+}
+
 type Matcher struct {
 	ID            uuid.UUID
 	ClientConfigs map[uuid.UUID]*ClientConfig
@@ -27,6 +32,9 @@ type Matcher struct {
 	AssetHolders  []wallet.Address
 	App           *app.VerifyApp
 	Stakes        []*big.Int
+
+	BidOrders []*MatcherOrder
+	AskOrders []*MatcherOrder
 }
 
 func NewMatcher(chainURL string, chain int64, privateKey string) *Matcher {
@@ -52,7 +60,7 @@ func NewMatcher(chainURL string, chain int64, privateKey string) *Matcher {
 
 func (m *Matcher) SetupClient(userID uuid.UUID) (wire.Bus, common.Address, []wallet.Address, *app.VerifyApp, []*big.Int) {
 	bus := wire.NewLocalBus()
-	appClient := utils.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, constants.KEY_MATCHER, m.App, m.Stakes)
+	appClient := utils.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, constants.KEY_MATCHER, m.App, m.Stakes, true)
 	m.ClientConfigs[userID] = &ClientConfig{
 		AppClient:     appClient,
 		VerifyChannel: &client.VerifyChannel{},
@@ -66,7 +74,18 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 		return false
 	}
 	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
+	go m.receiveOrder(userID)
 	return true
+}
+
+func (m *Matcher) receiveOrder(userID uuid.UUID) {
+	for order := range m.ClientConfigs[userID].AppClient.TriggerChannel {
+		fmt.Printf("Receive an order: {%v, %v, %v, %v}\n", order.Price, order.Amount, order.Side, order.Owner)
+		m.addOrder(&MatcherOrder{
+			Data:  order,
+			Owner: userID,
+		})
+	}
 }
 
 func (m *Matcher) Settle(userID uuid.UUID) {

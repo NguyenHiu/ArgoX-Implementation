@@ -36,7 +36,7 @@ func (u *User) SetupClient(
 	app *app.VerifyApp,
 	stakes []channel.Bal,
 ) {
-	u.AppClient = utils.SetupClient(bus, nodeURL, adjudicator, assets, u.PrivateKey, app, stakes)
+	u.AppClient = utils.SetupClient(bus, nodeURL, adjudicator, assets, u.PrivateKey, app, stakes, false)
 }
 
 func (u *User) AcceptedChannel() {

@@ -85,6 +85,7 @@ func SetupClient(
 	privateKey string,
 	app *app.VerifyApp,
 	stakes []channel.Bal,
+	useTrigger bool,
 ) *client.AppClient {
 	k, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
@@ -104,6 +105,7 @@ func SetupClient(
 		assets,
 		app,
 		stakes,
+		useTrigger,
 	)
 	if err != nil {
 		panic(err)

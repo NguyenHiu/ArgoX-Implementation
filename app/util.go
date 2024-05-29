@@ -15,19 +15,19 @@ import (
 )
 
 type Order struct {
-	OrderID        uuid.UUID
-	Price          int64
-	Amount         int64
-	Side           bool
-	Owner          *wallet.Address
-	OwnerSignture  []byte
-	Status         string
-	MatchedAmoount int64
+	OrderID       uuid.UUID
+	Price         int64
+	Amount        int64
+	Side          bool
+	Owner         *wallet.Address
+	OwnerSignture []byte
+	Status        string
+	MatchedAmount int64
 }
 
 type OrderUpdatedInfo struct {
-	Status         string
-	MatchedAmoount int64
+	Status        string
+	MatchedAmount int64
 }
 
 // The `status` parameter should be "P" at the init phase,
@@ -35,14 +35,14 @@ type OrderUpdatedInfo struct {
 func NewOrder(price, amount int64, side bool, owner *wallet.Address, status string) Order {
 	orderId, _ := uuid.NewRandom()
 	return Order{
-		OrderID:        orderId,
-		Price:          price,
-		Amount:         amount,
-		Side:           side,
-		Owner:          owner,
-		OwnerSignture:  []byte{},
-		Status:         status, // Replace later
-		MatchedAmoount: 0,
+		OrderID:       orderId,
+		Price:         price,
+		Amount:        amount,
+		Side:          side,
+		Owner:         owner,
+		OwnerSignture: []byte{},
+		Status:        status, // Replace later
+		MatchedAmount: 0,
 	}
 }
 
@@ -109,7 +109,7 @@ func (o *Order) Equal(_o *Order) bool {
 		o.Side == _o.Side &&
 		o.Owner.Cmp(_o.Owner) == 0 &&
 		o.Status == _o.Status &&
-		o.MatchedAmoount == _o.MatchedAmoount)
+		o.MatchedAmount == _o.MatchedAmount)
 }
 
 // Encode Order
@@ -156,7 +156,7 @@ func (o *Order) EncodeOrder() []byte {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.MatchedAmoount)
+	err = binary.Write(buf, binary.LittleEndian, o.MatchedAmount)
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
@@ -214,7 +214,7 @@ func DecodeOrder(data []byte) (*Order, error) {
 	}
 	order.Status = string(status_temp)
 
-	err = binary.Read(buf, binary.LittleEndian, &order.MatchedAmoount)
+	err = binary.Read(buf, binary.LittleEndian, &order.MatchedAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +232,7 @@ func computeFinalBalances(orders []*Order, bals channel.Balances) channel.Balanc
 	matcherReceivedGAV := int64(0)
 
 	for i := 0; i < len(orders); i++ {
-		// if orders[i].Status == "M" {
-		if orders[i].Status != "F" {
+		if orders[i].Status != "F" && orders[i].Status == "M" {
 			if orders[i].Side == constants.BID {
 				matcherReceivedETH += orders[i].Price
 				matcherReceivedGAV -= orders[i].Amount
@@ -242,7 +241,6 @@ func computeFinalBalances(orders []*Order, bals channel.Balances) channel.Balanc
 				matcherReceivedGAV += orders[i].Amount
 			}
 		}
-		// }
 	}
 
 	finalBals := bals.Clone()
