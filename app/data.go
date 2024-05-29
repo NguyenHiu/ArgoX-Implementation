@@ -43,8 +43,8 @@ func (d *VerifyAppData) UpdateExistedOrder(orderID uuid.UUID, updatedData OrderU
 			if updatedData.Status != "" {
 				d.Orders[i].Status = updatedData.Status
 			}
-			if updatedData.MatchedAmoount != 0 {
-				d.Orders[i].MatchedAmoount = updatedData.MatchedAmoount
+			if updatedData.MatchedAmount != 0 {
+				d.Orders[i].MatchedAmount = updatedData.MatchedAmount
 			}
 		}
 	}

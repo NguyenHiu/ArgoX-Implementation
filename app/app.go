@@ -133,7 +133,7 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 				fromData.Orders[i].Amount != toData.Orders[i].Amount ||
 				fromData.Orders[i].Side != toData.Orders[i].Side ||
 				fromData.Orders[i].Owner.Cmp(toData.Orders[i].Owner) != 0 ||
-				fromData.Orders[i].MatchedAmoount > toData.Orders[i].MatchedAmoount {
+				fromData.Orders[i].MatchedAmount > toData.Orders[i].MatchedAmount {
 				return fmt.Errorf("exist an invalid change at %v", i)
 			}
 		}
@@ -170,8 +170,6 @@ func (a *VerifyApp) SendNewOrder(s *channel.State, order *Order) error {
 		s.IsFinal = true
 		s.Balances = computeFinalBalances(d.Orders, s.Balances)
 	}
-	fmt.Printf("Sending Order, got status, isfinal: %v\n", s.IsFinal)
-
 	return nil
 }
 

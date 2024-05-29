@@ -51,8 +51,8 @@ func TestEncodeDecodeOrder(t *testing.T) {
 		t.Errorf("Expected Status: %v, got %v", order.Status, decodedOrder.Status)
 	}
 
-	if order.MatchedAmoount != decodedOrder.MatchedAmoount {
-		t.Errorf("Expected MatchedAmoount: %v, got %v", order.MatchedAmoount, decodedOrder.MatchedAmoount)
+	if order.MatchedAmount != decodedOrder.MatchedAmount {
+		t.Errorf("Expected MatchedAmount: %v, got %v", order.MatchedAmount, decodedOrder.MatchedAmount)
 	}
 
 }
