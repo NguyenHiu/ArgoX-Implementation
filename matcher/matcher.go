@@ -3,6 +3,7 @@ package matcher
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
@@ -75,7 +76,17 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	}
 	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
+	go m.goBatching()
 	return true
+}
+
+func (m *Matcher) goBatching() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		m.batching()
+	}
 }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {

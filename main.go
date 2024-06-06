@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"time"
 
 	App "github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
@@ -48,13 +49,21 @@ func main() {
 	alice.SendNewOrder(&order_1)
 
 	// Create Order 2
-	order_2 := App.NewOrder(client.EthToWei(big.NewFloat(5)).Int64(), 5, constants.ASK, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	order_2 := App.NewOrder(client.EthToWei(big.NewFloat(6)).Int64(), 5, constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
 	bobPrvKey, err := crypto.HexToECDSA(constants.KEY_BOB)
 	if err != nil {
 		panic(err)
 	}
 	order_2.Sign(*bobPrvKey)
 	bob.SendNewOrder(&order_2)
+
+	order_3 := App.NewOrder(client.EthToWei(big.NewFloat(7)).Int64(), 5, constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	order_3.Sign(*bobPrvKey)
+	bob.SendNewOrder(&order_3)
+
+	order_4 := App.NewOrder(client.EthToWei(big.NewFloat(6)).Int64(), 5, constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	order_4.Sign(*bobPrvKey)
+	bob.SendNewOrder(&order_4)
 
 	// Create Final Order
 	lastOrder_1 := App.NewOrder(0, 0, constants.BID, alice.AppClient.WalletAddressAsEthwallet(), "F")
@@ -65,6 +74,9 @@ func main() {
 	lastOrder_2 := App.NewOrder(0, 0, constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "F")
 	lastOrder_2.Sign(*bobPrvKey)
 	bob.SendNewOrder(&lastOrder_2)
+
+	<-time.After(200 * time.Second)
+	log.Println("DONE")
 
 	// Payout.
 	fmt.Println("Settle")

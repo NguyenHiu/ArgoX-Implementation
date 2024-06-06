@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
@@ -18,6 +19,14 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
+
+	if len(m.BidOrders) == 4 {
+		fmt.Println("Order Book:")
+		for _, order := range m.BidOrders {
+			fmt.Printf("%v, %v\n", order.Data.Price, order.Data.Amount)
+		}
+		fmt.Println()
+	}
 }
 
 func (m *Matcher) matching() bool {
@@ -60,14 +69,15 @@ func addAccordingTheOrder(order *MatcherOrder, orders []*MatcherOrder) []*Matche
 	} else if l == 1 {
 		if (order.Data.Side == constants.BID && order.Data.Price > orders[0].Data.Price) ||
 			(order.Data.Side == constants.ASK && order.Data.Price < orders[0].Data.Price) {
-			orders = append(orders, order)
-		} else {
 			orders = append([]*MatcherOrder{order}, orders...)
+		} else {
+			orders = append(orders, order)
 		}
 	} else {
 		for i := 0; i < l; i++ {
 			if (order.Data.Side == constants.BID && order.Data.Price > orders[i].Data.Price) ||
 				(order.Data.Side == constants.ASK && order.Data.Price < orders[i].Data.Price) {
+				fmt.Println("Ahhh, you touched me?")
 				orders = append(orders, nil)
 				copy(orders[i+1:], orders[i:])
 				orders[i] = order
