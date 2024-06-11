@@ -8,6 +8,8 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
+	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/contracts/generated/token"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/verifierApp"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,7 +24,7 @@ import (
 	"perun.network/go-perun/wire"
 )
 
-func DeployContracts(nodeURL string, chainID uint64, privatekey string) (adj common.Address, ahs []common.Address, app common.Address) {
+func DeployPerunContracts(nodeURL string, chainID uint64, privatekey string, gavTokenAddr common.Address) (adj common.Address, ahs []common.Address, app common.Address) {
 	k, err := crypto.HexToECDSA(privatekey)
 	if err != nil {
 		panic(err)
@@ -49,7 +51,7 @@ func DeployContracts(nodeURL string, chainID uint64, privatekey string) (adj com
 	}
 	ahs = append(ahs, ah)
 	// Deploy Gavin asset holder
-	ga, err := ethchannel.DeployERC20Assetholder(context.TODO(), cb, adj, common.HexToAddress(constants.GAVIN_TOKEN_ADDRESS), acc)
+	ga, err := ethchannel.DeployERC20Assetholder(context.TODO(), cb, adj, gavTokenAddr, acc)
 	if err != nil {
 		panic(err)
 	}
@@ -75,6 +77,36 @@ func DeployContracts(nodeURL string, chainID uint64, privatekey string) (adj com
 	}
 
 	return adj, ahs, app
+}
+
+func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Address, common.Address) {
+	privateKey, err := crypto.HexToECDSA(prvkey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// keystore := keystore.NewKeyStore()
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(int64(chainID)))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client, err := ethclient.Dial("http://127.0.0.1:8545")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	token, _, _, err := token.DeployToken(auth, client)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	onchain, _, _, err := onchain.DeployOnchain(auth, client)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return token, onchain
 }
 
 func SetupClient(

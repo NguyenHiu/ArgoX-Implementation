@@ -39,3 +39,4 @@ bin/
 Thumbs.db
 
 contracts/perun-eth-contracts
+contracts/openzeppelin-contracts
