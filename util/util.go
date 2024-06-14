@@ -1,4 +1,4 @@
-package constants
+package util
 
 import (
 	"context"
@@ -96,10 +96,15 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 		log.Fatal(err)
 	}
 
-	token, _, _, err := token.DeployToken(auth, client)
+	token, _, tokenInstance, err := token.DeployToken(auth, client)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Mint gavin token
+	mintGavinToken(tokenInstance, client, constants.KEY_MATCHER)
+	mintGavinToken(tokenInstance, client, constants.KEY_ALICE)
+	mintGavinToken(tokenInstance, client, constants.KEY_BOB)
 
 	onchain, _, _, err := onchain.DeployOnchain(auth, client)
 	if err != nil {
@@ -118,6 +123,7 @@ func SetupClient(
 	app *app.VerifyApp,
 	stakes []channel.Bal,
 	useTrigger bool,
+	gavinAddr common.Address,
 ) *client.AppClient {
 	k, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
@@ -138,6 +144,7 @@ func SetupClient(
 		app,
 		stakes,
 		useTrigger,
+		gavinAddr,
 	)
 	if err != nil {
 		panic(err)
@@ -171,4 +178,71 @@ func (l balanceLogger) LogBalances(clients ...*client.AppClient) {
 		bals[i] = client.WeiToEth(bal)
 	}
 	log.Println("Client balances (ETH):", bals)
+}
+
+// The contract uses Openzeppelin smart contract to verify ECDSA.
+// The Openzeppelin ECDSA contract uses V = {27, 28}
+// However, `crypto` packages in Golang uses V = {0, 1}
+// Therefore, we have to manually change the V value
+func CorrectSignToOnchain(signature []byte) []byte {
+	if signature[64] == 0 || signature[64] == 1 {
+		_signature := make([]byte, len(signature))
+		copy(_signature, signature)
+		_signature[64] += 27
+		return _signature
+	}
+
+	return signature
+
+}
+
+func CorrectSignToBE(signature []byte) []byte {
+	if signature[64] == 27 || signature[64] == 28 {
+		_signature := make([]byte, len(signature))
+		copy(_signature, signature)
+		_signature[64] -= 27
+		return _signature
+	}
+
+	return signature
+}
+
+func PaddingToUint256(num int64) []byte {
+	bigInt := big.NewInt(num)
+	return append(make([]byte, 32-len(bigInt.Bytes())), bigInt.Bytes()...)
+}
+
+func mintGavinToken(tokenInstance *token.Token, client *ethclient.Client, privateKeyHex string) {
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(1337))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	addr := crypto.PubkeyToAddress(privateKey.PublicKey)
+	prepareNonceAndGasPrice(auth, client, addr)
+	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(1000)); err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func prepareNonceAndGasPrice(auth *bind.TransactOpts, client *ethclient.Client, address common.Address) {
+	nonce, err := client.PendingNonceAt(context.Background(), address)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.GasPrice = gasPrice
+	auth.Value = &big.Int{}
+	auth.GasLimit = uint64(300000)
 }

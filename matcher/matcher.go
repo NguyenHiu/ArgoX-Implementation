@@ -2,14 +2,19 @@ package matcher
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
-	utils "github.com/NguyenHiu/lightning-exchange/utils"
+	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/util"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"perun.network/go-perun/backend/ethereum/wallet"
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
@@ -27,21 +32,43 @@ type MatcherOrder struct {
 }
 
 type Matcher struct {
+	// Perun's Data
 	ID            uuid.UUID
-	ClientConfigs map[uuid.UUID]*ClientConfig
+	ClientConfigs map[uuid.UUID]*ClientConfig // store traders' channel
 	Adjudicator   common.Address
 	AssetHolders  []wallet.Address
 	App           *app.VerifyApp
 	Stakes        []*big.Int
 
+	// Gavin Address
+	GavinAddress common.Address
+
+	// Order Book
 	BidOrders []*MatcherOrder
 	AskOrders []*MatcherOrder
+
+	// Super Matcher & Onchain Contract
+	SuperMatcherURI string             // Super Matcher API Server
+	OnchainInstance *onchain.Onchain   // Onchain Contract
+	Auth            *bind.TransactOpts // authentication for writting to smart contract
+	Client          *ethclient.Client  // for getting nonce & gas price
+
+	Address common.Address // address of an account used for interacting with onchain
+
+	Batches map[uuid.UUID]*Batch // be ready for providing a valid proof of any batch
 }
 
-func NewMatcher(chainURL string, chain int64, privateKey string) *Matcher {
-	id, _ := uuid.NewRandom()
+func NewMatcher(
+	assetHolders []common.Address,
+	adj, appAddr, onchainAddr common.Address,
+	privateKey, superMatcherURI string,
+	clientNode string,
+	chainID int64,
+	gavinAddress common.Address,
+) *Matcher {
 	fmt.Println("Deploying Smart Contracts...")
-	adj, assetHolders, appAddr := utils.DeployContracts(constants.CHAIN_URL, constants.CHAIN_ID, constants.KEY_DEPLOYER)
+
+	id, _ := uuid.NewRandom()
 	verifierApp := app.NewVerifyApp(ethwallet.AsWalletAddr(appAddr))
 	stakeETH := client.EthToWei(big.NewFloat(5))
 	stakeGVN := big.NewInt(5)
@@ -49,6 +76,25 @@ func NewMatcher(chainURL string, chain int64, privateKey string) *Matcher {
 	for _, asset := range assetHolders {
 		ethwalletAssetHolders = append(ethwalletAssetHolders, *ethwallet.AsWalletAddr(asset))
 	}
+
+	client, err := ethclient.Dial(clientNode)
+	if err != nil {
+		log.Fatal(err)
+	}
+	instance, err := onchain.NewOnchain(onchainAddr, client)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_privateKey, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth, err := bind.NewKeyedTransactorWithChainID(_privateKey, big.NewInt(chainID))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &Matcher{
 		ID:            id,
 		ClientConfigs: make(map[uuid.UUID]*ClientConfig),
@@ -56,12 +102,26 @@ func NewMatcher(chainURL string, chain int64, privateKey string) *Matcher {
 		AssetHolders:  ethwalletAssetHolders,
 		App:           verifierApp,
 		Stakes:        []*big.Int{stakeETH, stakeGVN},
+
+		BidOrders: []*MatcherOrder{},
+		AskOrders: []*MatcherOrder{},
+
+		SuperMatcherURI: superMatcherURI,
+		OnchainInstance: instance,
+		Auth:            auth,
+		Client:          client,
+
+		Address: crypto.PubkeyToAddress(_privateKey.PublicKey),
+
+		Batches: make(map[uuid.UUID]*Batch),
+
+		GavinAddress: gavinAddress,
 	}
 }
 
 func (m *Matcher) SetupClient(userID uuid.UUID) (wire.Bus, common.Address, []wallet.Address, *app.VerifyApp, []*big.Int) {
 	bus := wire.NewLocalBus()
-	appClient := utils.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, constants.KEY_MATCHER, m.App, m.Stakes, true)
+	appClient := util.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, constants.KEY_MATCHER, m.App, m.Stakes, true, m.GavinAddress)
 	m.ClientConfigs[userID] = &ClientConfig{
 		AppClient:     appClient,
 		VerifyChannel: &client.VerifyChannel{},
