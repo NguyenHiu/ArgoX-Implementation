@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
 	App "github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/accounts"
@@ -26,7 +25,7 @@ type AppClient struct {
 	account        wallet.Address
 	currencies     []channel.Asset
 	stakes         []channel.Bal
-	app            *app.VerifyApp
+	app            *App.VerifyApp
 	channels       chan *VerifyChannel
 	UseTrigger     bool
 	TriggerChannel chan *App.Order
@@ -41,9 +40,10 @@ func SetupAppClient(
 	chainID uint64, // chainID is the identifier of the blockchain.
 	adjudicator common.Address, // adjudicator is the address of the adjudicator.
 	assets []ethwallet.Address, // assets are the address of the asset holder for our app channels.
-	app *app.VerifyApp, // app is the channel app we want to set up the client with.
+	app *App.VerifyApp, // app is the channel app we want to set up the client with.
 	stakes []channel.Bal, // stake is the balance the client is willing to fund the channel with.
 	useTrigger bool,
+	gavinAddr common.Address,
 ) (*AppClient, error) {
 	// Create Ethereum client and contract backend.
 	cb, err := CreateContractBackend(nodeURL, chainID, w)
@@ -60,7 +60,7 @@ func SetupAppClient(
 	if err != nil {
 		return nil, fmt.Errorf("validating asset holder: %w", err)
 	}
-	err = ethchannel.ValidateAssetHolderERC20(context.TODO(), cb, common.Address(assets[constants.GVN]), adjudicator, common.HexToAddress(constants.GAVIN_TOKEN_ADDRESS))
+	err = ethchannel.ValidateAssetHolderERC20(context.TODO(), cb, common.Address(assets[constants.GVN]), adjudicator, gavinAddr)
 	if err != nil {
 		return nil, fmt.Errorf("validating asset holder erc20: %w", err)
 	}
@@ -70,7 +70,7 @@ func SetupAppClient(
 	dep := ethchannel.NewETHDepositor()
 	ethAcc := accounts.Account{Address: acc}
 	funder.RegisterAsset(assets[constants.ETH], dep, ethAcc)
-	depERC20 := ethchannel.NewERC20Depositor(common.HexToAddress(constants.GAVIN_TOKEN_ADDRESS))
+	depERC20 := ethchannel.NewERC20Depositor(gavinAddr)
 	funder.RegisterAsset(assets[constants.GVN], depERC20, ethAcc)
 
 	// Setup adjudicator.

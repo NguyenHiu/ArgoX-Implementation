@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
-	utils "github.com/NguyenHiu/lightning-exchange/utils"
+	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
@@ -35,8 +35,9 @@ func (u *User) SetupClient(
 	assets []ethwallet.Address,
 	app *app.VerifyApp,
 	stakes []channel.Bal,
+	gavinAddr common.Address,
 ) {
-	u.AppClient = utils.SetupClient(bus, nodeURL, adjudicator, assets, u.PrivateKey, app, stakes, false)
+	u.AppClient = util.SetupClient(bus, nodeURL, adjudicator, assets, u.PrivateKey, app, stakes, false, gavinAddr)
 }
 
 func (u *User) AcceptedChannel() {
