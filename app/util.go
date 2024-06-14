@@ -16,23 +16,23 @@ import (
 
 type Order struct {
 	OrderID       uuid.UUID
-	Price         int64
-	Amount        int64
+	Price         *big.Int
+	Amount        *big.Int
 	Side          bool
 	Owner         *wallet.Address
 	OwnerSignture []byte
 	Status        string
-	MatchedAmount int64
+	MatchedAmount *big.Int
 }
 
 type OrderUpdatedInfo struct {
 	Status        string
-	MatchedAmount int64
+	MatchedAmount *big.Int
 }
 
 // The `status` parameter should be "P" at the init phase,
 // but allowing the `status` parameter to be passed is for testing purposes.
-func NewOrder(price, amount int64, side bool, owner *wallet.Address, status string) Order {
+func NewOrder(price, amount *big.Int, side bool, owner *wallet.Address, status string) Order {
 	orderId, _ := uuid.NewRandom()
 	return Order{
 		OrderID:       orderId,
@@ -42,7 +42,7 @@ func NewOrder(price, amount int64, side bool, owner *wallet.Address, status stri
 		Owner:         owner,
 		OwnerSignture: []byte{},
 		Status:        status, // Replace later
-		MatchedAmount: 0,
+		MatchedAmount: &big.Int{},
 	}
 }
 
@@ -57,11 +57,11 @@ func (o *Order) Sign(prvkey ecdsa.PrivateKey) error {
 		return fmt.Errorf("invalid uuid")
 	}
 	data := new(bytes.Buffer)
-	binary.Write(data, binary.LittleEndian, orderID)
-	binary.Write(data, binary.LittleEndian, o.Price)
-	binary.Write(data, binary.LittleEndian, o.Amount)
-	binary.Write(data, binary.LittleEndian, o.Side)
-	binary.Write(data, binary.LittleEndian, o.Owner.Bytes())
+	binary.Write(data, binary.BigEndian, orderID)
+	binary.Write(data, binary.BigEndian, PaddingToUint256(o.Price))
+	binary.Write(data, binary.BigEndian, PaddingToUint256(o.Amount))
+	binary.Write(data, binary.BigEndian, o.Side)
+	binary.Write(data, binary.BigEndian, o.Owner.Bytes())
 
 	hashedData := crypto.Keccak256Hash(data.Bytes())
 
@@ -80,11 +80,11 @@ func (o *Order) IsValidSignature() bool {
 		return false
 	}
 	data := new(bytes.Buffer)
-	binary.Write(data, binary.LittleEndian, orderID)
-	binary.Write(data, binary.LittleEndian, o.Price)
-	binary.Write(data, binary.LittleEndian, o.Amount)
-	binary.Write(data, binary.LittleEndian, o.Side)
-	binary.Write(data, binary.LittleEndian, o.Owner.Bytes())
+	binary.Write(data, binary.BigEndian, orderID)
+	binary.Write(data, binary.BigEndian, PaddingToUint256(o.Price))
+	binary.Write(data, binary.BigEndian, PaddingToUint256(o.Amount))
+	binary.Write(data, binary.BigEndian, o.Side)
+	binary.Write(data, binary.BigEndian, o.Owner.Bytes())
 	hashedData := crypto.Keccak256Hash(data.Bytes())
 
 	pub, err := crypto.SigToPub(hashedData.Bytes(), o.OwnerSignture)
@@ -98,14 +98,14 @@ func (o *Order) IsValidSignature() bool {
 		return false
 	}
 	pubBytes := crypto.FromECDSAPub(pub)
-	return crypto.VerifySignature(pubBytes, hashedData.Bytes(), o.OwnerSignture[:len(o.OwnerSignture)-1])
+	return crypto.VerifySignature(pubBytes, hashedData.Bytes(), o.OwnerSignture[:64])
 
 }
 
 func (o *Order) Equal(_o *Order) bool {
 	return (o.OrderID == _o.OrderID &&
-		o.Price == _o.Price &&
-		o.Amount == _o.Amount &&
+		o.Price.Cmp(_o.Price) == 0 &&
+		o.Amount.Cmp(_o.Amount) == 0 &&
 		o.Side == _o.Side &&
 		o.Owner.Cmp(_o.Owner) == 0 &&
 		o.Status == _o.Status &&
@@ -121,45 +121,80 @@ func (o *Order) EncodeOrder() []byte {
 	if err != nil {
 		fmt.Println("invalid uuid")
 	}
-	err = binary.Write(buf, binary.LittleEndian, orderID)
+	err = binary.Write(buf, binary.BigEndian, orderID)
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.Price)
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Price))
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.Amount)
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Amount))
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.Side)
+	err = binary.Write(buf, binary.BigEndian, o.Side)
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.Owner.Bytes())
+	err = binary.Write(buf, binary.BigEndian, o.Owner.Bytes())
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.OwnerSignture)
+	err = binary.Write(buf, binary.BigEndian, o.OwnerSignture)
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, []byte(o.Status))
+	err = binary.Write(buf, binary.BigEndian, []byte(o.Status))
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, o.MatchedAmount)
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.MatchedAmount))
 	if err != nil {
 		fmt.Println("binary.Write failed:", err)
 	}
+	return buf.Bytes()
+}
+
+func (o *Order) EncodePackedOrder() []byte {
+	buf := new(bytes.Buffer)
+
+	orderID, err := o.OrderID.MarshalBinary()
+	if err != nil {
+		fmt.Println("invalid uuid")
+	}
+	err = binary.Write(buf, binary.BigEndian, orderID)
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Price))
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Amount))
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, o.Side)
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, o.Owner.Bytes())
+	if err != nil {
+		fmt.Println("binary.Write failed:", err)
+	}
+
 	return buf.Bytes()
 }
 
@@ -170,7 +205,7 @@ func DecodeOrder(data []byte) (*Order, error) {
 	buf := bytes.NewBuffer(data)
 
 	orderIDTemp := make([]byte, 16)
-	err := binary.Read(buf, binary.LittleEndian, &orderIDTemp)
+	err := binary.Read(buf, binary.BigEndian, &orderIDTemp)
 	if err != nil {
 		return nil, err
 	}
@@ -179,45 +214,51 @@ func DecodeOrder(data []byte) (*Order, error) {
 		return nil, err
 	}
 
-	err = binary.Read(buf, binary.LittleEndian, &order.Price)
+	price := make([]byte, 32)
+	err = binary.Read(buf, binary.BigEndian, &price)
 	if err != nil {
 		return nil, err
 	}
+	order.Price = new(big.Int).SetBytes(price)
 
-	err = binary.Read(buf, binary.LittleEndian, &order.Amount)
+	amount := make([]byte, 32)
+	err = binary.Read(buf, binary.BigEndian, &amount)
 	if err != nil {
 		return nil, err
 	}
+	order.Amount = new(big.Int).SetBytes(amount)
 
-	err = binary.Read(buf, binary.LittleEndian, &order.Side)
+	err = binary.Read(buf, binary.BigEndian, &order.Side)
 	if err != nil {
 		return nil, err
 	}
 
 	order.Owner = &wallet.Address{}
-	err = binary.Read(buf, binary.LittleEndian, order.Owner)
+	err = binary.Read(buf, binary.BigEndian, &order.Owner)
 	if err != nil {
 		return nil, err
 	}
 
 	ownerSign := make([]byte, 65)
-	err = binary.Read(buf, binary.LittleEndian, &ownerSign)
+	err = binary.Read(buf, binary.BigEndian, &ownerSign)
 	if err != nil {
 		return nil, err
 	}
 	order.OwnerSignture = ownerSign
 
 	status_temp := make([]byte, 1)
-	err = binary.Read(buf, binary.LittleEndian, &status_temp)
+	err = binary.Read(buf, binary.BigEndian, &status_temp)
 	if err != nil {
 		return nil, err
 	}
 	order.Status = string(status_temp)
 
-	err = binary.Read(buf, binary.LittleEndian, &order.MatchedAmount)
+	matchedAmount := make([]byte, 32)
+	err = binary.Read(buf, binary.BigEndian, &matchedAmount)
 	if err != nil {
 		return nil, err
 	}
+	order.MatchedAmount = new(big.Int).SetBytes(matchedAmount)
 
 	return &order, nil
 }
@@ -228,28 +269,30 @@ func (d *VerifyAppData) CheckFinal() bool {
 }
 
 func computeFinalBalances(orders []*Order, bals channel.Balances) channel.Balances {
-	matcherReceivedETH := int64(0)
-	matcherReceivedGAV := int64(0)
+	matcherReceivedETH := &big.Int{}
+	matcherReceivedGAV := &big.Int{}
 
 	for i := 0; i < len(orders); i++ {
 		if orders[i].Status != "F" && orders[i].Status == "M" {
 			if orders[i].Side == constants.BID {
-				matcherReceivedETH += orders[i].Price
-				matcherReceivedGAV -= orders[i].Amount
+				matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, orders[i].Price)
+				matcherReceivedGAV = new(big.Int).Sub(matcherReceivedGAV, orders[i].Amount)
 			} else {
-				matcherReceivedETH -= orders[i].Price
-				matcherReceivedGAV += orders[i].Amount
+				matcherReceivedETH = new(big.Int).Sub(matcherReceivedETH, orders[i].Price)
+				matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, orders[i].Amount)
 			}
 		}
 	}
 
 	finalBals := bals.Clone()
-	noETH := big.NewInt(matcherReceivedETH)
-	noGAV := big.NewInt(matcherReceivedGAV)
-	finalBals[constants.ETH][constants.MATCHER] = new(big.Int).Add(bals[constants.ETH][constants.MATCHER], noETH)
-	finalBals[constants.ETH][constants.TRADER] = new(big.Int).Sub(bals[constants.ETH][constants.TRADER], noETH)
-	finalBals[constants.GVN][constants.MATCHER] = new(big.Int).Add(bals[constants.GVN][constants.MATCHER], noGAV)
-	finalBals[constants.GVN][constants.TRADER] = new(big.Int).Sub(bals[constants.GVN][constants.TRADER], noGAV)
+	finalBals[constants.ETH][constants.MATCHER] = new(big.Int).Add(bals[constants.ETH][constants.MATCHER], matcherReceivedETH)
+	finalBals[constants.ETH][constants.TRADER] = new(big.Int).Sub(bals[constants.ETH][constants.TRADER], matcherReceivedETH)
+	finalBals[constants.GVN][constants.MATCHER] = new(big.Int).Add(bals[constants.GVN][constants.MATCHER], matcherReceivedGAV)
+	finalBals[constants.GVN][constants.TRADER] = new(big.Int).Sub(bals[constants.GVN][constants.TRADER], matcherReceivedGAV)
 
 	return finalBals
+}
+
+func PaddingToUint256(num *big.Int) []byte {
+	return append(make([]byte, 32-len(num.Bytes())), num.Bytes()...)
 }
