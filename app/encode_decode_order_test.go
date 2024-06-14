@@ -2,6 +2,7 @@ package app
 
 import (
 	"crypto/ecdsa"
+	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,7 +16,7 @@ func TestEncodeDecodeOrder(t *testing.T) {
 	pubkey, _ := prvkey.Public().(*ecdsa.PublicKey)
 	owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*pubkey))
 
-	order := NewOrder(10, 5, constants.BID, owner, "P")
+	order := NewOrder(big.NewInt(10), big.NewInt(5), constants.BID, owner, "P")
 	err := order.Sign(*prvkey)
 	if err != nil {
 		t.Errorf("Sign order error, err: %v\n", err)

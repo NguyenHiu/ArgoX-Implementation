@@ -2,6 +2,7 @@ package app
 
 import (
 	"crypto/ecdsa"
+	"math/big"
 	"testing"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
@@ -10,8 +11,8 @@ import (
 )
 
 func TestSignAndVerifyOrderSignature(t *testing.T) {
-	var price int64 = 10
-	var amount int64 = 5
+	price := big.NewInt(10)
+	amount := big.NewInt(5)
 	side := constants.BID
 	k, _ := crypto.GenerateKey()
 	p, _ := k.Public().(*ecdsa.PublicKey)

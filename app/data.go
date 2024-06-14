@@ -2,6 +2,7 @@ package app
 
 import (
 	"io"
+	"math/big"
 
 	"github.com/google/uuid"
 	"perun.network/go-perun/channel"
@@ -43,7 +44,7 @@ func (d *VerifyAppData) UpdateExistedOrder(orderID uuid.UUID, updatedData OrderU
 			if updatedData.Status != "" {
 				d.Orders[i].Status = updatedData.Status
 			}
-			if updatedData.MatchedAmount != 0 {
+			if updatedData.MatchedAmount.Cmp(&big.Int{}) != 0 {
 				d.Orders[i].MatchedAmount = updatedData.MatchedAmount
 			}
 		}

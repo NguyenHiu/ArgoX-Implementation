@@ -133,7 +133,7 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 				fromData.Orders[i].Amount != toData.Orders[i].Amount ||
 				fromData.Orders[i].Side != toData.Orders[i].Side ||
 				fromData.Orders[i].Owner.Cmp(toData.Orders[i].Owner) != 0 ||
-				fromData.Orders[i].MatchedAmount > toData.Orders[i].MatchedAmount {
+				fromData.Orders[i].MatchedAmount.Cmp(toData.Orders[i].MatchedAmount) == 1 {
 				return fmt.Errorf("exist an invalid change at %v", i)
 			}
 		}

@@ -59,7 +59,7 @@ func (m *Matcher) canMatch() bool {
 	if len(m.BidOrders) == 0 || len(m.AskOrders) == 0 {
 		return false
 	}
-	return m.BidOrders[0].Data.Price >= m.AskOrders[0].Data.Price
+	return m.BidOrders[0].Data.Price.Cmp(m.AskOrders[0].Data.Price) != -1
 }
 
 func addAccordingTheOrder(order *MatcherOrder, orders []*MatcherOrder) []*MatcherOrder {
@@ -67,17 +67,16 @@ func addAccordingTheOrder(order *MatcherOrder, orders []*MatcherOrder) []*Matche
 	if l == 0 {
 		orders = append(orders, order)
 	} else if l == 1 {
-		if (order.Data.Side == constants.BID && order.Data.Price > orders[0].Data.Price) ||
-			(order.Data.Side == constants.ASK && order.Data.Price < orders[0].Data.Price) {
+		if (order.Data.Side == constants.BID && order.Data.Price.Cmp(orders[0].Data.Price) == 1) ||
+			(order.Data.Side == constants.ASK && order.Data.Price.Cmp(orders[0].Data.Price) == -1) {
 			orders = append([]*MatcherOrder{order}, orders...)
 		} else {
 			orders = append(orders, order)
 		}
 	} else {
 		for i := 0; i < l; i++ {
-			if (order.Data.Side == constants.BID && order.Data.Price > orders[i].Data.Price) ||
-				(order.Data.Side == constants.ASK && order.Data.Price < orders[i].Data.Price) {
-				fmt.Println("Ahhh, you touched me?")
+			if (order.Data.Side == constants.BID && order.Data.Price.Cmp(orders[i].Data.Price) == 1) ||
+				(order.Data.Side == constants.ASK && order.Data.Price.Cmp(orders[i].Data.Price) == -1) {
 				orders = append(orders, nil)
 				copy(orders[i+1:], orders[i:])
 				orders[i] = order
