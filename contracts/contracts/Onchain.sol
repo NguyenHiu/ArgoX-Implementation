@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
-import "./openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
-import "./openzeppelin-contracts/contracts/utils/Strings.sol";
+import "../openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
+import "../openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import "../openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract Onchain {
     struct Batch {
@@ -11,8 +11,9 @@ contract Onchain {
         uint256 price;
         uint256 amount;
         bool side;
-        uint256 time;
         address owner;
+        bytes sign;
+        uint256 time;
     }
 
     struct Order {
@@ -108,56 +109,63 @@ contract Onchain {
             _batchMapping[batchID].time + _waitingTime < block.timestamp;
     }
 
-    function submitOrderDetails(
-        bytes16 batchID,
-        Order[] memory _ors
-    ) public isPendingBatch(batchID) isBatchOwner(batchID) {
-        uint256 _temp = 0;
-        for (uint8 i = 0; i < _ors.length; i++) {
-            if (
-                ECDSA.recover(
-                    MessageHashUtils.toEthSignedMessageHash(
-                        abi.encodePacked(
-                            _ors[i].orderID,
-                            _ors[i].price,
-                            _ors[i].amount,
-                            _ors[i].side
-                        )
-                    ),
-                    _ors[i].sign
-                ) != _ors[i].owner
-            ) {
-                emit WrongOrders(batchID);
-                return;
-            }
-            _temp += _ors[i].amount;
-        }
+    // function submitOrderDetails(
+    //     bytes16 batchID,
+    //     Order[] memory _ors
+    // ) public isPendingBatch(batchID) isBatchOwner(batchID) {
+    //     uint256 _temp = 0;
+    //     bytes memory ordersHash;
+    //     for (uint8 i = 0; i < _ors.length; i++) {
+    //         // Hash each order
+    //         bytes memory packedOrders = abi.encodePacked(
+    //             _ors[i].orderID,
+    //             _ors[i].price,
+    //             _ors[i].amount,
+    //             _ors[i].side
+    //         );
+    //         ordersHash = keccak256(abi.encodePacked(ordersHash, packedOrders));
 
-        if (_temp != _batchMapping[batchID].amount) {
-            emit WrongOrders(batchID);
-            return;
-        }
+    //         // Check order's signature
+    //         if (
+    //             ECDSA.recover(
+    //                 MessageHashUtils.toEthSignedMessageHash(packedOrders),
+    //                 _ors[i].sign
+    //             ) != _ors[i].owner
+    //         ) {
+    //             emit WrongOrders(batchID);
+    //             return;
+    //         }
+    //         _temp += _ors[i].amount;
+    //     }
 
-        // FIXME: There is a case where Matcher sends 'fake orders' that are still accepted, 
-        //          This action can be accepted if:
-        //                  + These 'fake orders' are valid orders (having valid signatures)
-        //                  + The cumulative amount of these fake orders is equal to the amount of real orders
+    //     if (_temp != _batchMapping[batchID].amount) {
+    //         emit WrongOrders(batchID);
+    //         return;
+    //     }     
 
-        // SUGGEST: Verify batch's signature!
+    //     // FIXME: There is a case where Matcher sends 'fake orders' that are still accepted,
+    //     //          This action can be accepted if:
+    //     //                  + These 'fake orders' are valid orders (having valid signatures)
+    //     //                  + The cumulative amount of these fake orders is equal to the amount of real orders
 
-        _batchMapping[batchID].time = 0;
-        emit ReceivedBatchDetails(batchID);
-    }
+    //     // SUGGEST: Verify batch's signature!
+        
+
+
+    //     _batchMapping[batchID].time = 0;
+    //     emit ReceivedBatchDetails(batchID);
+    // }
 
     function sendBatch(
         bytes16 batchID,
         uint256 price,
         uint256 amount,
         bool side,
-        address owner
+        address owner,
+        bytes memory sign
     ) public {
         emit AcceptBatch(batchID);
-        Batch memory _nb = Batch(batchID, price, amount, side, 0, owner);
+        Batch memory _nb = Batch(batchID, price, amount, side, owner, sign, 0);
         _sendBatch(_nb);
     }
 
