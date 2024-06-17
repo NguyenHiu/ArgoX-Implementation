@@ -18,7 +18,7 @@ func (m *Matcher) SendBatch(batch *Batch) {
 
 	res, err := http.Post(fmt.Sprintf("%v/batch/submit", m.SuperMatcherURI), "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error when sending batches to Super Matcher, err: ", err)
 	}
 
 	fmt.Printf("SendBatch, res: %v\n", res)

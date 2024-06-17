@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
@@ -19,14 +18,6 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
-
-	if len(m.BidOrders) == 4 {
-		fmt.Println("Order Book:")
-		for _, order := range m.BidOrders {
-			fmt.Printf("%v, %v\n", order.Data.Price, order.Data.Amount)
-		}
-		fmt.Println()
-	}
 }
 
 func (m *Matcher) matching() bool {

@@ -145,13 +145,17 @@ func (m *Matcher) goBatching() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		m.batching()
+		batches := m.batching()
+		for _, batch := range batches {
+			m.SendBatch(batch)
+		}
 	}
 }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for order := range m.ClientConfigs[userID].AppClient.TriggerChannel {
-		fmt.Printf("Receive an order: {%v, %v, %v, %v}\n", order.Price, order.Amount, order.Side, order.Owner)
+		fmt.Printf("[%v] Receive an order: {%v, %v, %v, %v}\n", m.ID.String()[:4], order.Price, order.Amount, order.Side, order.Owner)
+
 		m.addOrder(&MatcherOrder{
 			Data:  order,
 			Owner: userID,

@@ -69,10 +69,11 @@ func (b *Batch) Sign(privateKey string) {
 
 // I know this function isn't ideal and has too much duplicated code.
 // However, the current priority is to get the protocol running.
-func (m *Matcher) batching() ([]*Batch, []*Batch) {
+func (m *Matcher) batching() []*Batch {
+	batches := []*Batch{}
 
 	// bid batches
-	bidBatches := []*Batch{}
+	// bidBatches := []*Batch{}
 	if len(m.BidOrders) > 0 {
 		ord := m.BidOrders[0]
 		m.BidOrders = m.BidOrders[1:]
@@ -86,7 +87,7 @@ func (m *Matcher) batching() ([]*Batch, []*Batch) {
 				batch.Orders = append(batch.Orders, ord)
 			} else {
 				cnt++
-				bidBatches = append(bidBatches, batch)
+				batches = append(batches, batch)
 				batch = newBatch(ord.Data.Price, ord.Data.Amount, ord.Data.Side, []*MatcherOrder{ord}, m.Address)
 			}
 		}
@@ -101,12 +102,12 @@ func (m *Matcher) batching() ([]*Batch, []*Batch) {
 					break
 				}
 			}
-			bidBatches = append(bidBatches, batch)
+			batches = append(batches, batch)
 		}
 	}
 
 	// ask batches
-	askBatches := []*Batch{}
+	// askBatches := []*Batch{}
 	if len(m.AskOrders) > 0 {
 		ord := m.AskOrders[0]
 		m.AskOrders = m.AskOrders[1:]
@@ -120,7 +121,7 @@ func (m *Matcher) batching() ([]*Batch, []*Batch) {
 				batch.Orders = append(batch.Orders, ord)
 			} else {
 				cnt++
-				askBatches = append(askBatches, batch)
+				batches = append(batches, batch)
 				batch = newBatch(ord.Data.Price, ord.Data.Amount, ord.Data.Side, []*MatcherOrder{ord}, m.Address)
 			}
 		}
@@ -135,9 +136,9 @@ func (m *Matcher) batching() ([]*Batch, []*Batch) {
 					break
 				}
 			}
-			askBatches = append(askBatches, batch)
+			batches = append(batches, batch)
 		}
 	}
 
-	return bidBatches, askBatches
+	return batches
 }
