@@ -89,12 +89,12 @@ func (o *Order) IsValidSignature() bool {
 
 	pub, err := crypto.SigToPub(hashedData.Bytes(), o.OwnerSignture)
 	if err != nil {
-		fmt.Printf("Cannot recover public key from signature, error: %v\n", err)
+		_logger.Debug("Cannot recover public key from signature, error: %v\n", err)
 		return false
 	}
 	_owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*pub))
 	if _owner.Cmp(o.Owner) != 0 {
-		fmt.Println("Provided public key does not match with the order's owner")
+		_logger.Debug("Provided public key does not match with the order's owner\n")
 		return false
 	}
 	pubBytes := crypto.FromECDSAPub(pub)
@@ -112,95 +112,137 @@ func (o *Order) Equal(_o *Order) bool {
 		o.MatchedAmount == _o.MatchedAmount)
 }
 
-// Encode Order
-// Price > Amount > Side > Owner > Status
-func (o *Order) EncodeOrder() []byte {
+// Used in Lightning
+func (o *Order) Encode_TransferLightning() []byte {
 	buf := new(bytes.Buffer)
 
 	orderID, err := o.OrderID.MarshalBinary()
 	if err != nil {
-		fmt.Println("invalid uuid")
+		_logger.Debug("invalid uuid\n")
 	}
 	err = binary.Write(buf, binary.BigEndian, orderID)
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Price))
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Amount))
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Side)
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Owner.Bytes())
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.OwnerSignture)
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, []byte(o.Status))
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.MatchedAmount))
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 	return buf.Bytes()
 }
 
-func (o *Order) EncodePackedOrder() []byte {
+// Used in Smart Contract
+func (o *Order) Encode_Sign() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	orderID, err := o.OrderID.MarshalBinary()
 	if err != nil {
-		fmt.Println("invalid uuid")
+		return []byte{}, fmt.Errorf("invalid uuid")
 	}
 	err = binary.Write(buf, binary.BigEndian, orderID)
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		return []byte{}, fmt.Errorf("binary.Write failed:%v", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Price))
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		return []byte{}, fmt.Errorf("binary.Write failed:%v", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Amount))
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		return []byte{}, fmt.Errorf("binary.Write failed:%v", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Side)
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		return []byte{}, fmt.Errorf("binary.Write failed:%v", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Owner.Bytes())
 	if err != nil {
-		fmt.Println("binary.Write failed:", err)
+		return []byte{}, fmt.Errorf("binary.Write failed:%v", err)
 	}
 
-	return buf.Bytes()
+	return buf.Bytes(), nil
+}
+
+// Used in Batching
+// Length: 16 + 32 + 32 + 1 + 20 + 65 = 166 bytes
+func (o *Order) Encode_TransferBatching() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	orderID, err := o.OrderID.MarshalBinary()
+	if err != nil {
+		return []byte{}, fmt.Errorf("invalid uuid")
+	}
+	err = binary.Write(buf, binary.BigEndian, orderID)
+	if err != nil {
+		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Price))
+	if err != nil {
+		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Amount))
+	if err != nil {
+		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, o.Side)
+	if err != nil {
+		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, o.Owner.Bytes())
+	if err != nil {
+		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
+	}
+
+	err = binary.Write(buf, binary.BigEndian, o.OwnerSignture)
+	if err != nil {
+		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 // Decode Order
 // Follow the parameter orders when encoding
-func DecodeOrder(data []byte) (*Order, error) {
+func Order_Decode_TransferLightning(data []byte) (*Order, error) {
 	order := Order{}
 	buf := bytes.NewBuffer(data)
 

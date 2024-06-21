@@ -11,11 +11,18 @@ import (
 )
 
 func (sm *SuperMatcher) SendBatch(batch *Batch) {
-	sm.prepareNonceAndGasPrice(0, 300000)
-	// _, err := sm.OnchainInstance.SendBatch(sm.Auth, batch.BatchID, batch.Price, batch.Amount, batch.Side, batch.Owner)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	sm.Mutex.Lock()
+
+	_logger.Info("Sends batch::%v to onchain\n", batch.BatchID.String()[:6])
+
+	sm.prepareNonceAndGasPrice(0, 900000)
+	_, err := sm.OnchainInstance.SendBatch(sm.Auth, batch.BatchID, batch.Price, batch.Amount, batch.Side, batch.Owner, batch.Signature)
+
+	sm.Mutex.Unlock()
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (sm *SuperMatcher) isMatcher(matcherAddr common.Address) bool {
@@ -25,14 +32,6 @@ func (sm *SuperMatcher) isMatcher(matcherAddr common.Address) bool {
 	}
 	return res
 }
-
-/*
-// 	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS GAVIN UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-*/
 
 func (sm *SuperMatcher) prepareNonceAndGasPrice(value float64, gasLimit int) {
 	nonce, err := sm.Client.PendingNonceAt(context.Background(), sm.Address)

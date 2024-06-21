@@ -1,7 +1,7 @@
 package matcher
 
 import (
-	"fmt"
+	"crypto/ecdsa"
 	"log"
 	"math/big"
 	"time"
@@ -10,6 +10,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -20,6 +21,8 @@ import (
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	"perun.network/go-perun/wire"
 )
+
+var _logger = logger.NewLogger("Matcher")
 
 type ClientConfig struct {
 	AppClient     *client.AppClient
@@ -53,7 +56,8 @@ type Matcher struct {
 	Auth            *bind.TransactOpts // authentication for writting to smart contract
 	Client          *ethclient.Client  // for getting nonce & gas price
 
-	Address common.Address // address of an account used for interacting with onchain
+	Address    common.Address // address of an account used for interacting with onchain
+	PrivateKey *ecdsa.PrivateKey
 
 	Batches map[uuid.UUID]*Batch // be ready for providing a valid proof of any batch
 }
@@ -62,12 +66,10 @@ func NewMatcher(
 	assetHolders []common.Address,
 	adj, appAddr, onchainAddr common.Address,
 	privateKey, superMatcherURI string,
-	clientNode string,
+	clientNode *ethclient.Client,
 	chainID int64,
 	gavinAddress common.Address,
 ) *Matcher {
-	fmt.Println("Deploying Smart Contracts...")
-
 	id, _ := uuid.NewRandom()
 	verifierApp := app.NewVerifyApp(ethwallet.AsWalletAddr(appAddr))
 	stakeETH := client.EthToWei(big.NewFloat(5))
@@ -77,11 +79,7 @@ func NewMatcher(
 		ethwalletAssetHolders = append(ethwalletAssetHolders, *ethwallet.AsWalletAddr(asset))
 	}
 
-	client, err := ethclient.Dial(clientNode)
-	if err != nil {
-		log.Fatal(err)
-	}
-	instance, err := onchain.NewOnchain(onchainAddr, client)
+	instance, err := onchain.NewOnchain(onchainAddr, clientNode)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,9 +107,10 @@ func NewMatcher(
 		SuperMatcherURI: superMatcherURI,
 		OnchainInstance: instance,
 		Auth:            auth,
-		Client:          client,
+		Client:          clientNode,
 
-		Address: crypto.PubkeyToAddress(_privateKey.PublicKey),
+		Address:    crypto.PubkeyToAddress(_privateKey.PublicKey),
+		PrivateKey: _privateKey,
 
 		Batches: make(map[uuid.UUID]*Batch),
 
@@ -141,12 +140,13 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 }
 
 func (m *Matcher) goBatching() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		batches := m.batching()
 		for _, batch := range batches {
+			batch.Sign(m.PrivateKey)
 			m.SendBatch(batch)
 		}
 	}
@@ -154,7 +154,7 @@ func (m *Matcher) goBatching() {
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for order := range m.ClientConfigs[userID].AppClient.TriggerChannel {
-		fmt.Printf("[%v] Receive an order: {%v, %v, %v, %v}\n", m.ID.String()[:4], order.Price, order.Amount, order.Side, order.Owner)
+		_logger.Info("[%v] Receive an order: {%v, %v, %v, %v}\n", m.ID.String()[:6], order.Price, order.Amount, order.Side, order.Owner)
 
 		m.addOrder(&MatcherOrder{
 			Data:  order,

@@ -2,7 +2,6 @@ package matcher
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/big"
 
@@ -18,6 +17,8 @@ func (m *Matcher) Register() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go m.ListenEvents()
 }
 
 func (m *Matcher) ListenEvents() {
@@ -36,19 +37,11 @@ func watchFullfilEvent(contract *onchain.Onchain, opts *bind.WatchOpts) {
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
-		case vLogs := <-logs:
-			fmt.Printf("[Fullfill] batch id: %v\n", vLogs)
+			// case vLogs := <-logs:
+			// 	_logger.Info("[Fullfill] batch id: %v\n", vLogs.Raw.Data)
 		}
 	}
 }
-
-/*
-// 	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS GAVIN UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-//	UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS UTILS
-*/
 
 func (m *Matcher) prepareNonceAndGasPrice(value float64, gasLimit int) {
 	nonce, err := m.Client.PendingNonceAt(context.Background(), m.Address)

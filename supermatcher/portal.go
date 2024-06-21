@@ -1,7 +1,6 @@
 package supermatcher
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -9,14 +8,18 @@ import (
 )
 
 func (sm *SuperMatcher) SetupHTTPServer() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/batch", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			return
+		}
+
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
-		batch := Batch{}
 
-		if err = json.Unmarshal(data, &batch); err != nil {
+		batch, err := Batch_Decode_TransferBatching(data)
+		if err != nil {
 			log.Fatal(err)
 		}
 
@@ -24,10 +27,10 @@ func (sm *SuperMatcher) SetupHTTPServer() {
 			fmt.Fprintln(w, "missing param(s)")
 		}
 
-		fmt.Println("Got batch: ", batch)
-		sm.AddBatch(&batch)
+		sm.AddBatch(batch)
 	})
 
+	_logger.Info("Super Matcher is listening...\n")
 	if err := http.ListenAndServe(fmt.Sprintf(":%v", sm.Port), nil); err != nil {
 		log.Fatal(err)
 	}

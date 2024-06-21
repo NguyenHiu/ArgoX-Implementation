@@ -6,6 +6,7 @@ import (
 
 	App "github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
+	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -19,6 +20,8 @@ import (
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	swallet "perun.network/go-perun/backend/ethereum/wallet/simple"
 )
+
+var _logger = logger.NewLogger("client")
 
 type AppClient struct {
 	perunClient    *client.Client
@@ -121,7 +124,7 @@ func (c *AppClient) startWatching(ch *client.Channel) {
 	go func() {
 		err := ch.Watch(c)
 		if err != nil {
-			fmt.Printf("Watcher returned with error: %v", err)
+			_logger.Debug("Watcher returned with error: %v\n", err)
 		}
 	}()
 }

@@ -6,11 +6,14 @@ import (
 	"log"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
+	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/wallet"
 )
+
+var _logger = logger.NewLogger("app")
 
 type VerifyApp struct {
 	Addr wallet.Address
@@ -51,7 +54,7 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 	// decode each order
 	for i := 0; i < no; i++ {
 		order_data := data[i*constants.ORDER_SIZE : (i+1)*constants.ORDER_SIZE]
-		order, err := DecodeOrder(order_data)
+		order, err := Order_Decode_TransferLightning(order_data)
 		if err != nil {
 			log.Fatalf("Decode(): decoding an invalid order, index: %v, error: %v\n", i, err)
 		}

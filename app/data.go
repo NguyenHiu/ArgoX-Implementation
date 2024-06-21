@@ -18,7 +18,7 @@ func (d *VerifyAppData) Encode(w io.Writer) error {
 
 	// encode each order
 	for _, val := range d.Orders {
-		encoded_data = append(encoded_data, val.EncodeOrder()...)
+		encoded_data = append(encoded_data, val.Encode_TransferLightning()...)
 	}
 
 	// write encoded data into writer

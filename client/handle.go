@@ -61,7 +61,7 @@ func (c *AppClient) HandleProposal(p client.ChannelProposal, r *client.ProposalR
 	)
 	ch, err := r.Accept(context.TODO(), accept)
 	if err != nil {
-		fmt.Printf("Error accepting channel proposal: %v\n", err)
+		_logger.Error("Error accepting channel proposal: %v\n", err)
 		return
 	}
 
