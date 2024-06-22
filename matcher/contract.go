@@ -6,8 +6,13 @@ import (
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/client"
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/google/uuid"
 )
 
 func (m *Matcher) Register() {
@@ -18,17 +23,17 @@ func (m *Matcher) Register() {
 		log.Fatal(err)
 	}
 
-	go m.ListenEvents()
+	m.ListenEvents()
 }
 
 func (m *Matcher) ListenEvents() {
 	opts := bind.WatchOpts{Context: context.Background()}
-	go watchFullfilEvent(m.OnchainInstance, &opts)
+	go m.watchFullfilEvent(&opts)
 }
 
-func watchFullfilEvent(contract *onchain.Onchain, opts *bind.WatchOpts) {
+func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 	logs := make(chan *onchain.OnchainFullfilMatch)
-	sub, err := contract.WatchFullfilMatch(opts, logs)
+	sub, err := m.OnchainInstance.WatchFullfilMatch(opts, logs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,8 +42,45 @@ func watchFullfilEvent(contract *onchain.Onchain, opts *bind.WatchOpts) {
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
-			// case vLogs := <-logs:
-			// 	_logger.Info("[Fullfill] batch id: %v\n", vLogs.Raw.Data)
+		case vLogs := <-logs:
+			_pv, _ := crypto.HexToECDSA(constants.KEY_MATCHER_1)
+			if _pv.Equal(m.PrivateKey) {
+				continue
+			}
+
+			id, _ := uuid.FromBytes(vLogs.Arg0[:])
+			_logger.Debug("Matcher::%v receive an fullfill event batch::%v\n", m.ID.String()[:6], id.String())
+			m.Mux.Lock()
+			batch, ok := m.Batches[id]
+			m.Mux.Unlock()
+			if !ok {
+				continue
+			}
+
+			onchainOrders := []onchain.OnchainOrder{}
+			for _, order := range batch.Orders {
+				_orderID, _ := order.Data.OrderID.MarshalBinary()
+				var _orderID16 [16]byte
+				copy(_orderID16[:], _orderID)
+				onchainOrders = append(onchainOrders, onchain.OnchainOrder{
+					OrderID:   _orderID16,
+					Price:     order.Data.Price,
+					Amount:    order.Data.Amount,
+					Side:      order.Data.Side,
+					Signature: util.CorrectSignToOnchain(order.Data.OwnerSignture),
+					Owner:     common.Address(common.FromHex(order.Data.Owner.String())),
+				})
+			}
+
+			// Send batch's details
+			// m.Mux.Lock()
+			m.prepareNonceAndGasPrice(0, 900000)
+			_, err := m.OnchainInstance.SubmitOrderDetails(m.Auth, vLogs.Arg0, onchainOrders)
+			if err != nil {
+				_logger.Error("Submit Error, err: %v\n", err)
+			}
+			_logger.Debug("Matcher::%v, Submit batch's details, batch::%v\n", m.ID.String()[:6], id.String())
+			// m.Mux.Unlock()
 		}
 	}
 }

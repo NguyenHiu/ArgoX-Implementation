@@ -12,7 +12,7 @@ contract Onchain {
         uint256 amount;
         bool side;
         address owner;
-        bytes sign;
+        bytes signature;
         uint256 time;
     }
 
@@ -21,7 +21,7 @@ contract Onchain {
         uint256 price;
         uint256 amount;
         bool side;
-        bytes sign;
+        bytes signature;
         address owner;
     }
 
@@ -35,20 +35,47 @@ contract Onchain {
 
     constructor() {
         _registerFee = 1 ether;
-        _waitingTime = 0 seconds;
+        _waitingTime = 5 seconds;
     }
 
-    // events
+    /**
+     * Events
+     */
     event PartialMatch(bytes16);
     event FullfilMatch(bytes16);
     event ReceivedBatchDetails(bytes16);
     event AcceptBatch(bytes16);
     event PunishMatcher(address);
     event RemoveBatchOutOfDate(bytes16);
-    event WrongOrders(bytes16);
+    event InvalidOrder(bytes16);
+    event InvalidBatch(bytes16);
     event RevertBatch(bytes16);
+    // --- Log Events ---
+    event LogString(string);
+    event LogBytes32(bytes32);
+    event LogBytes16(bytes16);
+    event LogBytes(bytes);
+    event LogAddress(address);
+    event LogRecoverError(ECDSA.RecoverError);
 
-    // modifiers
+    /**
+     * Test Funcs
+     */
+    function addressToString(
+        address _addr
+    ) public pure returns (string memory) {
+        return Strings.toHexString(uint256(uint160(_addr)), 20);
+    }
+
+    function uintToString(
+        uint256 num
+    ) public pure returns (string memory) {
+        return Strings.toString(num);
+    }
+
+    /**
+     * Modifiers
+     */
     modifier isPendingBatch(bytes16 batchID) {
         require(_batchMapping[batchID].time != 0, "the batch is not pending");
         _;
@@ -70,7 +97,9 @@ contract Onchain {
         _;
     }
 
-    // functions
+    /**
+     * Functions
+     */
     function getRegisterFee() public view returns (uint256) {
         return _registerFee;
     }
@@ -97,6 +126,7 @@ contract Onchain {
         );
         _matcherStakes[_batchMapping[batchID].owner] = 0; // punish: take all the stake token of the matcher
         _batchMapping[batchID].time = 0;
+
         // revert
         _tryRevertBatch(_tradeMapping[batchID]);
         emit RemoveBatchOutOfDate(batchID);
@@ -109,52 +139,75 @@ contract Onchain {
             _batchMapping[batchID].time + _waitingTime < block.timestamp;
     }
 
-    // function submitOrderDetails(
-    //     bytes16 batchID,
-    //     Order[] memory _ors
-    // ) public isPendingBatch(batchID) isBatchOwner(batchID) {
-    //     uint256 _temp = 0;
-    //     bytes memory ordersHash;
-    //     for (uint8 i = 0; i < _ors.length; i++) {
-    //         // Hash each order
-    //         bytes memory packedOrders = abi.encodePacked(
-    //             _ors[i].orderID,
-    //             _ors[i].price,
-    //             _ors[i].amount,
-    //             _ors[i].side
-    //         );
-    //         ordersHash = keccak256(abi.encodePacked(ordersHash, packedOrders));
+    function submitOrderDetails(
+        bytes16 batchID,
+        Order[] memory _ords
+    ) public isPendingBatch(batchID) isBatchOwner(batchID) {
+        uint256 _temp = 0;
+        bytes memory ordersHash;
+        for (uint8 i = 0; i < _ords.length; i++) {
+            // Check signature
+            bytes memory packedOrder = abi.encodePacked(
+                _ords[i].orderID,
+                _ords[i].price,
+                _ords[i].amount,
+                _ords[i].side,
+                _ords[i].owner
+            );
 
-    //         // Check order's signature
-    //         if (
-    //             ECDSA.recover(
-    //                 MessageHashUtils.toEthSignedMessageHash(packedOrders),
-    //                 _ors[i].sign
-    //             ) != _ors[i].owner
-    //         ) {
-    //             emit WrongOrders(batchID);
-    //             return;
-    //         }
-    //         _temp += _ors[i].amount;
-    //     }
+            bytes32 hashedOrder = keccak256(packedOrder);
 
-    //     if (_temp != _batchMapping[batchID].amount) {
-    //         emit WrongOrders(batchID);
-    //         return;
-    //     }     
+            // Check order's signature
+            if (
+                ECDSA.recover(hashedOrder, _ords[i].signature) != _ords[i].owner
+            ) {
+                emit InvalidOrder(batchID);
+                return;
+            }
+            _temp += _ords[i].amount;
 
-    //     // FIXME: There is a case where Matcher sends 'fake orders' that are still accepted,
-    //     //          This action can be accepted if:
-    //     //                  + These 'fake orders' are valid orders (having valid signatures)
-    //     //                  + The cumulative amount of these fake orders is equal to the amount of real orders
+            // Prepare for batch verification
+            bytes memory _signature = _ords[i].signature;
+            _signature[64] = bytes1(uint8(_signature[64]) - 27);
+            ordersHash = abi.encodePacked(
+                ordersHash,
+                abi.encodePacked(packedOrder, _signature)
+            );
+        }
 
-    //     // SUGGEST: Verify batch's signature!
-        
+        if (_temp != _batchMapping[batchID].amount) {
+            emit InvalidBatch(batchID);
+            return;
+        }
 
+        // FIXME: There is a case where Matcher sends 'fake orders' that are still accepted,
+        //          This action can be accepted if:
+        //                  + These 'fake orders' are valid orders (having valid signatures)
+        //                  + The cumulative amount of these fake orders is equal to the amount of real orders
 
-    //     _batchMapping[batchID].time = 0;
-    //     emit ReceivedBatchDetails(batchID);
-    // }
+        // SUGGEST: Verify batch's signature!
+        address decryptedAddr = ECDSA.recover(
+            keccak256(
+                abi.encodePacked(
+                    batchID,
+                    _batchMapping[batchID].price,
+                    _batchMapping[batchID].amount,
+                    _batchMapping[batchID].side,
+                    uint8(_ords.length),
+                    ordersHash,
+                    _batchMapping[batchID].owner
+                )
+            ),
+            _batchMapping[batchID].signature
+        );
+        if (decryptedAddr != _batchMapping[batchID].owner) {
+            emit InvalidBatch(batchID);
+            return;
+        }
+
+        _batchMapping[batchID].time = 0;
+        emit ReceivedBatchDetails(batchID);
+    }
 
     function sendBatch(
         bytes16 batchID,
@@ -286,5 +339,16 @@ contract Onchain {
             Batch memory b = _batchMapping[batchID];
             _sendBatch(b);
         }
+    }
+
+    /**
+     * Debug Functions
+     */
+    function GetBidOrders() public view returns(Batch[] memory) {
+        return _bidBatches;
+    }
+
+    function GetAskOrders() public view returns(Batch[] memory) {
+        return _askBatches;
     }
 }
