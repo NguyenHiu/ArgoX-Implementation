@@ -148,7 +148,7 @@ func (r *Reporter) WatchRemoveBatchOutOfDate() {
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("Remove batch::%v\n", id.String())
+			// _logger.Info("Remove batch::%v\n", id.String())
 			r.Mux.Lock()
 			delete(r.PendingBatches, id)
 			r.Mux.Unlock()

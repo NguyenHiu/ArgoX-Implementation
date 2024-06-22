@@ -6,12 +6,10 @@ import (
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/client"
-	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 )
 
@@ -43,13 +41,8 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_pv, _ := crypto.HexToECDSA(constants.KEY_MATCHER_1)
-			if _pv.Equal(m.PrivateKey) {
-				continue
-			}
-
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Debug("Matcher::%v receive an fullfill event batch::%v\n", m.ID.String()[:6], id.String())
+			// _logger.Debug("Matcher::%v receive an fullfill event batch::%v\n", m.ID.String()[:6], id.String())
 			m.Mux.Lock()
 			batch, ok := m.Batches[id]
 			m.Mux.Unlock()

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"perun.network/go-perun/channel"
@@ -92,5 +91,5 @@ func (c *AppClient) HandleUpdate(cur *channel.State, next client.ChannelUpdate, 
 
 // HandleAdjudicatorEvent is the callback for smart contract events.
 func (c *AppClient) HandleAdjudicatorEvent(e channel.AdjudicatorEvent) {
-	log.Printf("Adjudicator event: type = %T, client = %v", e, c.account)
+	// _logger.Info("Adjudicator event: type = %T, client = %v\n", e, c.account)
 }

@@ -23,7 +23,7 @@ import (
 	"perun.network/go-perun/wire"
 )
 
-var _logger = logger.NewLogger("Matcher")
+var _logger = logger.NewLogger("Matcher", logger.None, logger.None)
 
 type ClientConfig struct {
 	AppClient     *client.AppClient

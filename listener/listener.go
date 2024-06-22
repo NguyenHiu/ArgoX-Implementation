@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var _logger = logger.NewLogger("Listener")
+var _logger = logger.NewLogger("Listener", logger.Yellow, logger.Bold)
 
 func StartListener(onchainAddr common.Address) {
 	client, _ := ethclient.Dial(constants.CHAIN_URL)

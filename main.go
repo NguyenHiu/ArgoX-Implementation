@@ -15,6 +15,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/listener"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/matcher"
+	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-var _logger = logger.NewLogger("Main")
+var _logger = logger.NewLogger("Main", logger.Red, logger.Bold)
 
 func getContracts() (common.Address, common.Address, common.Address, []common.Address, common.Address) {
 	token, err := data.Get("token")
@@ -78,21 +79,34 @@ func StartSuperMatcher(onchainAddr common.Address, client *ethclient.Client, pri
 }
 
 func main() {
+	// Deploy contracts
 	deploy.DeployContracts()
 	token, onchain, adj, assetHolders, appAddr := getContracts()
+
+	// Listen events from onchain contract
 	go listener.StartListener(onchain)
+
+	// Create a Reporter
+	rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
+	if err != nil {
+		_logger.Error("Create reporter error, err: %v\n", err)
+	}
+	// Start the reporter
+	rp.Listening()
+	rp.Reporting()
 
 	clientNode, err := ethclient.Dial(constants.CHAIN_URL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Start Super Matcher
 	go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	superMatcherURI := fmt.Sprintf("http://127.0.0.1:%v", constants.SUPER_MATCHER_PORT)
 
 	// Init matcher
-	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER, superMatcherURI, clientNode, constants.CHAIN_ID, token)
+	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_1, superMatcherURI, clientNode, constants.CHAIN_ID, token)
 	matcher1.Register()
 	// Init Alice
 	alice := user.NewUser(constants.KEY_ALICE)
@@ -106,7 +120,7 @@ func main() {
 	alice.AcceptedChannel()
 
 	// Init matcher
-	matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER, superMatcherURI, clientNode, constants.CHAIN_ID, token)
+	matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, token)
 	matcher2.Register()
 	// Init Bob
 	bob := user.NewUser(constants.KEY_BOB)
@@ -119,7 +133,7 @@ func main() {
 	bob.AcceptedChannel()
 
 	// Create Order 1
-	order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet(), "P")
+	order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
 	alicePrvKey, err := crypto.HexToECDSA(constants.KEY_ALICE)
 	if err != nil {
 		panic(err)
@@ -128,7 +142,7 @@ func main() {
 	alice.SendNewOrder(&order_1)
 
 	// Create Order 2
-	order_2 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	order_2 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
 	bobPrvKey, err := crypto.HexToECDSA(constants.KEY_BOB)
 	if err != nil {
 		panic(err)
@@ -136,15 +150,17 @@ func main() {
 	order_2.Sign(*bobPrvKey)
 	bob.SendNewOrder(&order_2)
 
-	// order_3 := App.NewOrder(client.EthToWei(big.NewFloat(7)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
-	// order_3.Sign(*bobPrvKey)
-	// bob.SendNewOrder(&order_3)
+	order_3 := App.NewOrder(client.EthToWei(big.NewFloat(7)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	order_3.Sign(*bobPrvKey)
+	bob.SendNewOrder(&order_3)
 
-	// order_4 := App.NewOrder(client.EthToWei(big.NewFloat(6)), big.NewInt(6), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
-	// order_4.Sign(*bobPrvKey)
-	// bob.SendNewOrder(&order_4)
+	order_4 := App.NewOrder(client.EthToWei(big.NewFloat(6)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	order_4.Sign(*bobPrvKey)
+	bob.SendNewOrder(&order_4)
 
-	<-time.After(time.Second * 100)
+	// <-time.After(time.Second * 10)
+
+	// <-time.After(time.Second * 100)
 
 	// Create Final Order
 	lastOrder_1 := App.NewOrder(&big.Int{}, &big.Int{}, constants.BID, alice.AppClient.WalletAddressAsEthwallet(), "F")
@@ -156,8 +172,7 @@ func main() {
 	lastOrder_2.Sign(*bobPrvKey)
 	bob.SendNewOrder(&lastOrder_2)
 
-	<-time.After(20 * time.Second)
-	log.Println("DONE")
+	// listener.LogOrderBookOverview(rp.OnchainInstance)
 
 	// Payout.
 	_logger.Info("Settle\n")
@@ -173,4 +188,5 @@ func main() {
 	bob.Shutdown()
 	matcher2.Shutdown(bob.ID)
 
+	<-time.After(time.Second * 100)
 }

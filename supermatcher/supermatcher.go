@@ -15,8 +15,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// var _logger = logger.NewLogger("\033[1mSuper Matcher\033[0m")
-var _logger = logger.NewLogger("Super Matcher")
+// var _logger = logger.NewLogger("\033[1mSuper Matcher\033[0m", logger.None, logger.None)
+var _logger = logger.NewLogger("Super Matcher", logger.Green, logger.Bold)
 
 type SuperMatcher struct {
 	OnchainInstance *onchain.Onchain

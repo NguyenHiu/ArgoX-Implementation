@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var _logger = logger.NewLogger("Reporter")
+var _logger = logger.NewLogger("Reporter", logger.LightBlue, logger.Bold)
 
 type Reporter struct {
 	ReporterID      uuid.UUID

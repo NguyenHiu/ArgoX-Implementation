@@ -21,7 +21,7 @@ import (
 	swallet "perun.network/go-perun/backend/ethereum/wallet/simple"
 )
 
-var _logger = logger.NewLogger("client")
+var _logger = logger.NewLogger("client", logger.None, logger.None)
 
 type AppClient struct {
 	perunClient    *client.Client

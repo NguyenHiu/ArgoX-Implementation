@@ -13,7 +13,7 @@ import (
 	"perun.network/go-perun/wallet"
 )
 
-var _logger = logger.NewLogger("app")
+var _logger = logger.NewLogger("app", logger.None, logger.None)
 
 type VerifyApp struct {
 	Addr wallet.Address
