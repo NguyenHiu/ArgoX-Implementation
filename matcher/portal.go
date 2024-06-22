@@ -9,7 +9,9 @@ import (
 )
 
 func (m *Matcher) SendBatch(batch *Batch) {
+	m.Mux.Lock()
 	m.Batches[batch.BatchID] = batch
+	m.Mux.Unlock()
 
 	data, err := batch.Encode_TranferBatching()
 	if err != nil {

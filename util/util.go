@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"log"
 	"math/big"
 
@@ -102,7 +103,8 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 	}
 
 	// Mint gavin token
-	mintGavinToken(tokenInstance, client, constants.KEY_MATCHER)
+	mintGavinToken(tokenInstance, client, constants.KEY_MATCHER_1)
+	mintGavinToken(tokenInstance, client, constants.KEY_MATCHER_2)
 	mintGavinToken(tokenInstance, client, constants.KEY_ALICE)
 	mintGavinToken(tokenInstance, client, constants.KEY_BOB)
 
@@ -119,19 +121,19 @@ func SetupClient(
 	nodeURL string,
 	adjudicator common.Address,
 	assets []ethwallet.Address,
-	privateKey string,
+	privateKey *ecdsa.PrivateKey,
 	app *app.VerifyApp,
 	stakes []channel.Bal,
 	useTrigger bool,
 	gavinAddr common.Address,
 ) *client.AppClient {
-	k, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		panic(err)
-	}
+	// k, err := crypto.HexToECDSA(privateKey)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	w := swallet.NewWallet(k)
-	acc := crypto.PubkeyToAddress(k.PublicKey)
+	w := swallet.NewWallet(privateKey)
+	acc := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 	c, err := client.SetupAppClient(
 		bus,

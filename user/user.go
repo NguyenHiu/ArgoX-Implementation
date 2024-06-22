@@ -5,6 +5,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	"perun.network/go-perun/channel"
@@ -37,7 +38,8 @@ func (u *User) SetupClient(
 	stakes []channel.Bal,
 	gavinAddr common.Address,
 ) {
-	u.AppClient = util.SetupClient(bus, nodeURL, adjudicator, assets, u.PrivateKey, app, stakes, false, gavinAddr)
+	_prvKey, _ := crypto.HexToECDSA(u.PrivateKey)
+	u.AppClient = util.SetupClient(bus, nodeURL, adjudicator, assets, _prvKey, app, stakes, false, gavinAddr)
 }
 
 func (u *User) AcceptedChannel() {

@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"log"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
@@ -60,6 +61,7 @@ type Matcher struct {
 	PrivateKey *ecdsa.PrivateKey
 
 	Batches map[uuid.UUID]*Batch // be ready for providing a valid proof of any batch
+	Mux     sync.Mutex
 }
 
 func NewMatcher(
@@ -120,7 +122,7 @@ func NewMatcher(
 
 func (m *Matcher) SetupClient(userID uuid.UUID) (wire.Bus, common.Address, []wallet.Address, *app.VerifyApp, []*big.Int) {
 	bus := wire.NewLocalBus()
-	appClient := util.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, constants.KEY_MATCHER, m.App, m.Stakes, true, m.GavinAddress)
+	appClient := util.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.App, m.Stakes, true, m.GavinAddress)
 	m.ClientConfigs[userID] = &ClientConfig{
 		AppClient:     appClient,
 		VerifyChannel: &client.VerifyChannel{},
