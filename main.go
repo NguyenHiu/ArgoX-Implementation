@@ -12,10 +12,8 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/data"
 	"github.com/NguyenHiu/lightning-exchange/deploy"
-	"github.com/NguyenHiu/lightning-exchange/listener"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/matcher"
-	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
 	"github.com/ethereum/go-ethereum/common"
@@ -83,25 +81,25 @@ func main() {
 	deploy.DeployContracts()
 	token, onchain, adj, assetHolders, appAddr := getContracts()
 
-	// Listen events from onchain contract
-	go listener.StartListener(onchain)
+	// // Listen events from onchain contract
+	// go listener.StartListener(onchain)
 
-	// Create a Reporter
-	rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
-	if err != nil {
-		_logger.Error("Create reporter error, err: %v\n", err)
-	}
-	// Start the reporter
-	rp.Listening()
-	rp.Reporting()
+	// // Create a Reporter
+	// rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
+	// if err != nil {
+	// 	_logger.Error("Create reporter error, err: %v\n", err)
+	// }
+	// // Start the reporter
+	// rp.Listening()
+	// rp.Reporting()
 
 	clientNode, err := ethclient.Dial(constants.CHAIN_URL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Start Super Matcher
-	go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
+	// // Start Super Matcher
+	// go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	superMatcherURI := fmt.Sprintf("http://127.0.0.1:%v", constants.SUPER_MATCHER_PORT)
 
@@ -118,37 +116,89 @@ func main() {
 		log.Fatalln("OpenAppChannel Failed")
 	}
 	alice.AcceptedChannel()
-
-	// Init matcher
-	matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, token)
-	matcher2.Register()
-	// Init Bob
-	bob := user.NewUser(constants.KEY_BOB)
-	bus_2, adj_2, ahs_2, app_2, stakes_2 := matcher2.SetupClient(bob.ID)
-	bob.SetupClient(bus_2, constants.CHAIN_URL, adj_2, ahs_2, app_2, stakes_2, token)
-	ok = matcher2.OpenAppChannel(bob.ID, bob.AppClient.WireAddress())
-	if !ok {
-		log.Fatalln("OpenAppChannel Failed")
-	}
-	bob.AcceptedChannel()
-
-	// Create Order 1
-	order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
 	alicePrvKey, err := crypto.HexToECDSA(constants.KEY_ALICE)
 	if err != nil {
 		panic(err)
 	}
-	order_1.Sign(*alicePrvKey)
-	alice.SendNewOrder(&order_1)
 
-	// Create Order 2
-	order_2 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
+	// // Init matcher
+	// matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, token)
+	// matcher2.Register()
+	// Init Bob
+	bob := user.NewUser(constants.KEY_BOB)
+	bus_2, adj_2, ahs_2, app_2, stakes_2 := matcher1.SetupClient(bob.ID)
+	bob.SetupClient(bus_2, constants.CHAIN_URL, adj_2, ahs_2, app_2, stakes_2, token)
+	ok = matcher1.OpenAppChannel(bob.ID, bob.AppClient.WireAddress())
+	if !ok {
+		log.Fatalln("OpenAppChannel Failed")
+	}
+	bob.AcceptedChannel()
 	bobPrvKey, err := crypto.HexToECDSA(constants.KEY_BOB)
 	if err != nil {
 		panic(err)
 	}
-	order_2.Sign(*bobPrvKey)
-	bob.SendNewOrder(&order_2)
+
+	{
+		_logger.Debug("1\n")
+		// Create Order 1
+		order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
+		order_1.Sign(*alicePrvKey)
+		alice.SendNewOrder(&order_1)
+	}
+	<-time.After(time.Second * 1)
+
+	{
+		_logger.Debug("2\n")
+		// Create Order 2
+		order_2 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet(), "P")
+		order_2.Sign(*bobPrvKey)
+		bob.SendNewOrder(&order_2)
+	}
+
+	<-time.After(time.Second * 1)
+
+	{
+		_logger.Debug("3\n")
+		// Create Order 1
+		order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
+		order_1.Sign(*alicePrvKey)
+		alice.SendNewOrder(&order_1)
+	}
+	<-time.After(time.Second * 1)
+
+	{
+		_logger.Debug("4\n")
+		// Create Order 1
+		order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
+		order_1.Sign(*alicePrvKey)
+		alice.SendNewOrder(&order_1)
+	}
+	<-time.After(time.Second * 1)
+
+	{
+		_logger.Debug("5\n")
+		// Create Order 1
+		order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
+		order_1.Sign(*alicePrvKey)
+		alice.SendNewOrder(&order_1)
+	}
+	<-time.After(time.Second * 1)
+
+	{
+		// Create Order 1
+		order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
+		order_1.Sign(*alicePrvKey)
+		alice.SendNewOrder(&order_1)
+	}
+	<-time.After(time.Second * 1)
+
+	{
+		// Create Order 1
+		order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
+		order_1.Sign(*alicePrvKey)
+		alice.SendNewOrder(&order_1)
+	}
+	<-time.After(time.Second * 100)
 
 	order_3 := App.NewOrder(client.EthToWei(big.NewFloat(7)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
 	order_3.Sign(*bobPrvKey)
@@ -179,14 +229,14 @@ func main() {
 	alice.Settle()
 	matcher1.Settle(alice.ID)
 	bob.Settle()
-	matcher2.Settle(bob.ID)
+	matcher1.Settle(bob.ID)
 
 	// Cleanup.
 	_logger.Info("Shutdown\n")
 	alice.Shutdown()
 	matcher1.Shutdown(alice.ID)
 	bob.Shutdown()
-	matcher2.Shutdown(bob.ID)
+	matcher1.Shutdown(bob.ID)
 
 	<-time.After(time.Second * 100)
 }

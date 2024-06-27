@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/NguyenHiu/lightning-exchange/app"
 	App "github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/logger"
@@ -129,6 +130,22 @@ func (c *AppClient) startWatching(ch *client.Channel) {
 	}()
 }
 
+func (c *AppClient) OnMyUpdate(from, to *channel.State) {
+	fromData := from.Data.(*app.VerifyAppData)
+	toData := to.Data.(*app.VerifyAppData)
+	if c.UseTrigger && len(fromData.Orders) < len(toData.Orders) {
+		for k, v := range toData.Orders {
+			if _, ok := fromData.Orders[k]; !ok {
+				c.TriggerChannel <- v
+			}
+		}
+		// for i := len(fromData.TestOrders); i < len(toData.TestOrders); i++ {
+		// 	c.TriggerChannel <- toData.TestOrders[i]
+		// }
+	}
+
+}
+
 // OpenAppChannel opens a new app channel with the specified peer.
 func (c *AppClient) OpenAppChannel(peer wire.Address) *VerifyChannel {
 	participants := []wire.Address{c.account, peer}
@@ -165,6 +182,8 @@ func (c *AppClient) OpenAppChannel(peer wire.Address) *VerifyChannel {
 	if err != nil {
 		panic(err)
 	}
+
+	ch.OnUpdate(c.OnMyUpdate)
 
 	// Start the on-chain event watcher. It automatically handles disputes.
 	c.startWatching(ch)

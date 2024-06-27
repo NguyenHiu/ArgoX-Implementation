@@ -15,14 +15,12 @@ import (
 )
 
 type Order struct {
-	OrderID       uuid.UUID
-	Price         *big.Int
-	Amount        *big.Int
-	Side          bool
-	Owner         *wallet.Address
-	OwnerSignture []byte
-	Status        string
-	MatchedAmount *big.Int
+	OrderID   uuid.UUID
+	Price     *big.Int
+	Amount    *big.Int
+	Side      bool
+	Owner     *wallet.Address
+	Signature []byte
 }
 
 type OrderUpdatedInfo struct {
@@ -30,19 +28,46 @@ type OrderUpdatedInfo struct {
 	MatchedAmount *big.Int
 }
 
+func (o *Order) Clone() *Order {
+	// Create a new Order instance
+	newOrder := &Order{
+		OrderID:   o.OrderID, // UUID is a value type, so it's safe to copy directly
+		Side:      o.Side,
+		Signature: make([]byte, len(o.Signature)),
+	}
+
+	// Copy the signature slice
+	copy(newOrder.Signature, o.Signature)
+
+	// For *big.Int fields, use the Set method to copy the values
+	if o.Price != nil {
+		newOrder.Price = new(big.Int).Set(o.Price)
+	}
+	if o.Amount != nil {
+		newOrder.Amount = new(big.Int).Set(o.Amount)
+	}
+
+	// Assuming wallet.Address is a struct and can be copied directly.
+	// If it contains pointer fields, you would need to implement a deep copy method for it as well.
+	if o.Owner != nil {
+		newOwner := *o.Owner // This assumes a shallow copy is sufficient for wallet.Address
+		newOrder.Owner = &newOwner
+	}
+
+	return newOrder
+}
+
 // The `status` parameter should be "P" at the init phase,
 // but allowing the `status` parameter to be passed is for testing purposes.
 func NewOrder(price, amount *big.Int, side bool, owner *wallet.Address, status string) Order {
 	orderId, _ := uuid.NewRandom()
 	return Order{
-		OrderID:       orderId,
-		Price:         price,
-		Amount:        amount,
-		Side:          side,
-		Owner:         owner,
-		OwnerSignture: []byte{},
-		Status:        status, // Replace later
-		MatchedAmount: &big.Int{},
+		OrderID:   orderId,
+		Price:     price,
+		Amount:    amount,
+		Side:      side,
+		Owner:     owner,
+		Signature: []byte{},
 	}
 }
 
@@ -69,7 +94,7 @@ func (o *Order) Sign(prvkey ecdsa.PrivateKey) error {
 	if err != nil {
 		return fmt.Errorf("can not sign the order, err: %v", err)
 	}
-	o.OwnerSignture = sig
+	o.Signature = sig
 
 	return nil
 }
@@ -87,7 +112,7 @@ func (o *Order) IsValidSignature() bool {
 	binary.Write(data, binary.BigEndian, o.Owner.Bytes())
 	hashedData := crypto.Keccak256Hash(data.Bytes())
 
-	pub, err := crypto.SigToPub(hashedData.Bytes(), o.OwnerSignture)
+	pub, err := crypto.SigToPub(hashedData.Bytes(), o.Signature)
 	if err != nil {
 		_logger.Debug("Cannot recover public key from signature, error: %v\n", err)
 		return false
@@ -98,7 +123,7 @@ func (o *Order) IsValidSignature() bool {
 		return false
 	}
 	pubBytes := crypto.FromECDSAPub(pub)
-	return crypto.VerifySignature(pubBytes, hashedData.Bytes(), o.OwnerSignture[:64])
+	return crypto.VerifySignature(pubBytes, hashedData.Bytes(), o.Signature[:64])
 
 }
 
@@ -107,9 +132,7 @@ func (o *Order) Equal(_o *Order) bool {
 		o.Price.Cmp(_o.Price) == 0 &&
 		o.Amount.Cmp(_o.Amount) == 0 &&
 		o.Side == _o.Side &&
-		o.Owner.Cmp(_o.Owner) == 0 &&
-		o.Status == _o.Status &&
-		o.MatchedAmount == _o.MatchedAmount)
+		o.Owner.Cmp(_o.Owner) == 0)
 }
 
 // Used in Lightning
@@ -145,20 +168,11 @@ func (o *Order) Encode_TransferLightning() []byte {
 		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
-	err = binary.Write(buf, binary.BigEndian, o.OwnerSignture)
+	err = binary.Write(buf, binary.BigEndian, o.Signature)
 	if err != nil {
 		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
-	err = binary.Write(buf, binary.BigEndian, []byte(o.Status))
-	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
-	}
-
-	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.MatchedAmount))
-	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
-	}
 	return buf.Bytes()
 }
 
@@ -232,7 +246,7 @@ func (o *Order) Encode_TransferBatching() ([]byte, error) {
 		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
 	}
 
-	err = binary.Write(buf, binary.BigEndian, o.OwnerSignture)
+	err = binary.Write(buf, binary.BigEndian, o.Signature)
 	if err != nil {
 		return []byte{}, fmt.Errorf("binary.Write failed: %v", err)
 	}
@@ -243,6 +257,7 @@ func (o *Order) Encode_TransferBatching() ([]byte, error) {
 // Decode Order
 // Follow the parameter orders when encoding
 func Order_Decode_TransferLightning(data []byte) (*Order, error) {
+	_logger.Debug("Decode Tranfer Lightning ... \n")
 	order := Order{}
 	buf := bytes.NewBuffer(data)
 
@@ -286,45 +301,31 @@ func Order_Decode_TransferLightning(data []byte) (*Order, error) {
 	if err != nil {
 		return nil, err
 	}
-	order.OwnerSignture = ownerSign
-
-	status_temp := make([]byte, 1)
-	err = binary.Read(buf, binary.BigEndian, &status_temp)
-	if err != nil {
-		return nil, err
-	}
-	order.Status = string(status_temp)
-
-	matchedAmount := make([]byte, 32)
-	err = binary.Read(buf, binary.BigEndian, &matchedAmount)
-	if err != nil {
-		return nil, err
-	}
-	order.MatchedAmount = new(big.Int).SetBytes(matchedAmount)
-
+	order.Signature = ownerSign
 	return &order, nil
 }
 
 func (d *VerifyAppData) CheckFinal() bool {
-	l := len(d.Orders)
-	return l != 0 && d.Orders[l-1].Status == "F"
+	// l := len(d.Orders)
+	// return l != 0 && d.Orders[l-1].Status == "F"
+	return false
 }
 
 func computeFinalBalances(orders []*Order, bals channel.Balances) channel.Balances {
 	matcherReceivedETH := &big.Int{}
 	matcherReceivedGAV := &big.Int{}
 
-	for i := 0; i < len(orders); i++ {
-		if orders[i].Status != "F" && orders[i].Status == "M" {
-			if orders[i].Side == constants.BID {
-				matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, orders[i].Price)
-				matcherReceivedGAV = new(big.Int).Sub(matcherReceivedGAV, orders[i].Amount)
-			} else {
-				matcherReceivedETH = new(big.Int).Sub(matcherReceivedETH, orders[i].Price)
-				matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, orders[i].Amount)
-			}
-		}
-	}
+	// for i := 0; i < len(orders); i++ {
+	// 	if orders[i].Status != "F" && orders[i].Status == "M" {
+	// 		if orders[i].Side == constants.BID {
+	// 			matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, orders[i].Price)
+	// 			matcherReceivedGAV = new(big.Int).Sub(matcherReceivedGAV, orders[i].Amount)
+	// 		} else {
+	// 			matcherReceivedETH = new(big.Int).Sub(matcherReceivedETH, orders[i].Price)
+	// 			matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, orders[i].Amount)
+	// 		}
+	// 	}
+	// }
 
 	finalBals := bals.Clone()
 	finalBals[constants.ETH][constants.MATCHER] = new(big.Int).Add(bals[constants.ETH][constants.MATCHER], matcherReceivedETH)

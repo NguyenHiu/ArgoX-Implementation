@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
@@ -137,22 +136,22 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	}
 	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
-	go m.goBatching()
+	// go m.goBatching()
 	return true
 }
 
-func (m *Matcher) goBatching() {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+// func (m *Matcher) goBatching() {
+// 	ticker := time.NewTicker(1 * time.Second)
+// 	defer ticker.Stop()
 
-	for range ticker.C {
-		batches := m.batching()
-		for _, batch := range batches {
-			batch.Sign(m.PrivateKey)
-			m.SendBatch(batch)
-		}
-	}
-}
+// 	for range ticker.C {
+// 		batches := m.batching()
+// 		for _, batch := range batches {
+// 			batch.Sign(m.PrivateKey)
+// 			m.SendBatch(batch)
+// 		}
+// 	}
+// }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for order := range m.ClientConfigs[userID].AppClient.TriggerChannel {
