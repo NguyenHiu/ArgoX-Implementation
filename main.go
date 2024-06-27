@@ -6,20 +6,17 @@ import (
 	"math/big"
 	"time"
 
-	App "github.com/NguyenHiu/lightning-exchange/app"
+	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/data"
 	"github.com/NguyenHiu/lightning-exchange/deploy"
-	"github.com/NguyenHiu/lightning-exchange/listener"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/matcher"
-	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -78,115 +75,152 @@ func StartSuperMatcher(onchainAddr common.Address, client *ethclient.Client, pri
 	}
 }
 
+// TODO: Simulation
 func main() {
 	// Deploy contracts
 	deploy.DeployContracts()
 	token, onchain, adj, assetHolders, appAddr := getContracts()
 
-	// Listen events from onchain contract
-	go listener.StartListener(onchain)
+	// // Listen events from onchain contract
+	// go listener.StartListener(onchain)
 
-	// Create a Reporter
-	rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
-	if err != nil {
-		_logger.Error("Create reporter error, err: %v\n", err)
-	}
-	// Start the reporter
-	rp.Listening()
-	rp.Reporting()
+	// // Create a Reporter
+	// rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
+	// if err != nil {
+	// 	_logger.Error("Create reporter error, err: %v\n", err)
+	// }
+	// // Start the reporter
+	// rp.Listening()
+	// rp.Reporting()
 
 	clientNode, err := ethclient.Dial(constants.CHAIN_URL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Start Super Matcher
-	go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
+	// // Start Super Matcher
+	// go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	superMatcherURI := fmt.Sprintf("http://127.0.0.1:%v", constants.SUPER_MATCHER_PORT)
 
-	// Init matcher
+	// Init matchers
 	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_1, superMatcherURI, clientNode, constants.CHAIN_ID, token)
 	matcher1.Register()
-	// Init Alice
-	alice := user.NewUser(constants.KEY_ALICE)
-	bus_1, adj_1, ahs_1, app_1, stakes_1 := matcher1.SetupClient(alice.ID)
-	alice.SetupClient(bus_1, constants.CHAIN_URL, adj_1, ahs_1, app_1, stakes_1, token)
-	_logger.Info("Opening channel.\n")
-	ok := matcher1.OpenAppChannel(alice.ID, alice.AppClient.WireAddress())
-	if !ok {
-		log.Fatalln("OpenAppChannel Failed")
-	}
-	alice.AcceptedChannel()
 
-	// Init matcher
-	matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, token)
-	matcher2.Register()
+	// matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, token)
+	// matcher2.Register()
+
 	// Init Bob
 	bob := user.NewUser(constants.KEY_BOB)
-	bus_2, adj_2, ahs_2, app_2, stakes_2 := matcher2.SetupClient(bob.ID)
-	bob.SetupClient(bus_2, constants.CHAIN_URL, adj_2, ahs_2, app_2, stakes_2, token)
-	ok = matcher2.OpenAppChannel(bob.ID, bob.AppClient.WireAddress())
-	if !ok {
+	busBob := matcher1.SetupClient(bob.ID)
+	bob.SetupClient(busBob, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, token)
+	if ok := matcher1.OpenAppChannel(bob.ID, bob.AppClient.WireAddress()); !ok {
 		log.Fatalln("OpenAppChannel Failed")
 	}
 	bob.AcceptedChannel()
 
-	// Create Order 1
-	order_1 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, alice.AppClient.WalletAddressAsEthwallet(), "P")
-	alicePrvKey, err := crypto.HexToECDSA(constants.KEY_ALICE)
-	if err != nil {
-		panic(err)
+	// Init Alice
+	alice := user.NewUser(constants.KEY_ALICE)
+	busAlice := matcher1.SetupClient(alice.ID)
+	alice.SetupClient(busAlice, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, token)
+	if ok := matcher1.OpenAppChannel(alice.ID, alice.AppClient.WireAddress()); !ok {
+		log.Fatalln("OpenAppChannel Failed")
 	}
-	order_1.Sign(*alicePrvKey)
-	alice.SendNewOrder(&order_1)
+	alice.AcceptedChannel()
 
 	// Create Order 2
-	order_2 := App.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
-	bobPrvKey, err := crypto.HexToECDSA(constants.KEY_BOB)
-	if err != nil {
-		panic(err)
+	order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+	order_2.Sign(constants.KEY_BOB)
+	bob.SendNewOrder(order_2)
+
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
 	}
-	order_2.Sign(*bobPrvKey)
-	bob.SendNewOrder(&order_2)
 
-	order_3 := App.NewOrder(client.EthToWei(big.NewFloat(7)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
-	order_3.Sign(*bobPrvKey)
-	bob.SendNewOrder(&order_3)
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+	}
 
-	order_4 := App.NewOrder(client.EthToWei(big.NewFloat(6)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "P")
-	order_4.Sign(*bobPrvKey)
-	bob.SendNewOrder(&order_4)
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+	}
+
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+	}
+
+	// // Create Order 1
+	// order_1 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
+	// order_1.Sign(constants.KEY_ALICE)
+	// alice.SendNewOrder(order_1)
+
+	// _logger.Debug("Waiting 5s...\n")
+	// <-time.After(time.Second * 5)
+
+	// _logger.Info("Send order\n")
+	// order_4 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
+	// order_4.Sign(constants.KEY_ALICE)
+	// alice.SendNewOrder(order_4)
+
+	// _logger.Info("Send order\n")
+	// order_3 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+	// order_3.Sign(constants.KEY_BOB)
+	// bob.SendNewOrder(order_3)
+
+	// // fmt.Println("BID: ", matcher1.BidOrders)
+	// // fmt.Println("ASK: ", matcher1.AskOrders)
+	// _logger.Debug("Waiting for 1 seconds...\n")
+	// <-time.After(1 * time.Second)
+	// _logger.Debug("Waiting 5s...\n")
+	// <-time.After(time.Second * 5)
+
+	// // Create Final Order
+	// lastOrder_2, err := app.EndOrder(constants.KEY_BOB)
+	// if err != nil {
+	// 	_logger.Error("create an end order is fail, err: %v\n", err)
+	// }
+	// bob.SendNewOrder(lastOrder_2)
+	// // Create Final Order
+
+	// lastOrder_1, err := app.EndOrder(constants.KEY_ALICE)
+	// if err != nil {
+	// 	_logger.Error("create an end order is fail, err: %v\n", err)
+	// }
+	// alice.SendNewOrder(lastOrder_1)
 
 	// <-time.After(time.Second * 10)
-
-	// <-time.After(time.Second * 100)
-
-	// Create Final Order
-	lastOrder_1 := App.NewOrder(&big.Int{}, &big.Int{}, constants.BID, alice.AppClient.WalletAddressAsEthwallet(), "F")
-	lastOrder_1.Sign(*alicePrvKey)
-	alice.SendNewOrder(&lastOrder_1)
-
-	// Create Final Order
-	lastOrder_2 := App.NewOrder(&big.Int{}, &big.Int{}, constants.BID, bob.AppClient.WalletAddressAsEthwallet(), "F")
-	lastOrder_2.Sign(*bobPrvKey)
-	bob.SendNewOrder(&lastOrder_2)
-
-	// listener.LogOrderBookOverview(rp.OnchainInstance)
+	// log.Println("DONE")
 
 	// Payout.
 	_logger.Info("Settle\n")
 	alice.Settle()
 	matcher1.Settle(alice.ID)
 	bob.Settle()
-	matcher2.Settle(bob.ID)
+	matcher1.Settle(bob.ID)
 
 	// Cleanup.
 	_logger.Info("Shutdown\n")
 	alice.Shutdown()
 	matcher1.Shutdown(alice.ID)
 	bob.Shutdown()
-	matcher2.Shutdown(bob.ID)
+	matcher1.Shutdown(bob.ID)
 
 	<-time.After(time.Second * 100)
 }
+
+// TODO:
+// 	1. Hoan thien lightning connection
+//	2. Test accept channel
+//

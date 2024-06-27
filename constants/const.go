@@ -5,7 +5,8 @@ const (
 	ASK                  = false
 	STATUS_LENGTH        = 1
 	NUM_PARTS            = 2
-	ORDER_SIZE           = 199 // 16 + 32 + 32 + 1 + 20 + 65 + 1 + 32
+	LIGHTNING_ORDER_SIZE = 166 // 16 + 32 + 32 + 1 + 20 + 65
+	LIGHTNING_MSG_SIZE   = 65  // 16 + 16 + 32 + 1
 	ETH                  = 0
 	GVN                  = 1
 	TRADER               = 0
@@ -25,4 +26,5 @@ const (
 	KEY_REPORTER       = "949dbd0607598c41478b32c27da65ab550d54246922fa8978a8c1b9e901e06a6"
 	KEY_MATCHER_2      = "87a3c9405478581d513a16075038e5869d02311371b757f7163200a09f230f18"
 	SUPER_MATCHER_PORT = 8080
+	GAVIN_TOKEN        = "668ed30aacc7c7c206aaf1327d733226416233e2"
 )

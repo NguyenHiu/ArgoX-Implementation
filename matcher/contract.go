@@ -60,7 +60,7 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 					Price:     order.Data.Price,
 					Amount:    order.Data.Amount,
 					Side:      order.Data.Side,
-					Signature: util.CorrectSignToOnchain(order.Data.OwnerSignture),
+					Signature: util.CorrectSignToOnchain(order.Data.Signature),
 					Owner:     common.Address(common.FromHex(order.Data.Owner.String())),
 				})
 			}

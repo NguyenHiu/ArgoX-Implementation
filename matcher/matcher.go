@@ -120,14 +120,14 @@ func NewMatcher(
 	}
 }
 
-func (m *Matcher) SetupClient(userID uuid.UUID) (wire.Bus, common.Address, []wallet.Address, *app.VerifyApp, []*big.Int) {
+func (m *Matcher) SetupClient(userID uuid.UUID) wire.Bus {
 	bus := wire.NewLocalBus()
 	appClient := util.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.App, m.Stakes, true, m.GavinAddress)
 	m.ClientConfigs[userID] = &ClientConfig{
 		AppClient:     appClient,
 		VerifyChannel: &client.VerifyChannel{},
 	}
-	return bus, m.Adjudicator, m.AssetHolders, m.App, m.Stakes
+	return bus
 }
 
 func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
@@ -137,12 +137,12 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	}
 	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
-	go m.goBatching()
+	// go m.goBatching()
 	return true
 }
 
 func (m *Matcher) goBatching() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -156,7 +156,11 @@ func (m *Matcher) goBatching() {
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for order := range m.ClientConfigs[userID].AppClient.TriggerChannel {
-		_logger.Info("[%v] Receive an order: {%v, %v, %v, %v}\n", m.ID.String()[:6], order.Price, order.Amount, order.Side, order.Owner)
+		_side := "bid"
+		if order.Side == constants.ASK {
+			_side = "ask"
+		}
+		_logger.Info("[%v] Receive an order: {%v, %v, %v	}\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, _side)
 
 		m.addOrder(&MatcherOrder{
 			Data:  order,
