@@ -3,6 +3,7 @@ package user
 import (
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
+	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -11,6 +12,8 @@ import (
 	"perun.network/go-perun/channel"
 	"perun.network/go-perun/wire"
 )
+
+var _logger = logger.NewLogger("User", logger.None, logger.None)
 
 type User struct {
 	ID            uuid.UUID
@@ -47,6 +50,7 @@ func (u *User) AcceptedChannel() {
 }
 
 func (u *User) SendNewOrder(newOrder *app.Order) {
+	_logger.Info("Sending new ORDER...\n")
 	u.VerifyChannel.SendNewOrder(newOrder)
 }
 

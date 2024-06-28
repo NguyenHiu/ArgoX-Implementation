@@ -1,11 +1,7 @@
 package matcher
 
 import (
-	"log"
-
-	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
-	"perun.network/go-perun/backend/ethereum/wallet"
 )
 
 // implement limit order book logic
@@ -26,29 +22,18 @@ func (m *Matcher) matching() bool {
 		return false
 	}
 
+	m.Mux.Lock()
+	defer m.Mux.Unlock()
+
+	// <-time.After(time.Second)
+
 	// naive matching
 	for m.canMatch() {
-		log.Printf("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.OrderID[:5], m.AskOrders[0].Data.OrderID[:5], m.BidOrders[0].Data.Amount)
-		msg1 := app.NewMessage(m.BidOrders[0].Data.OrderID, 'M', wallet.AsWalletAddr(m.Address))
-		msg1.Sign(m.PrivateKey)
-		// m.ClientConfigs[m.BidOrders[0].Owner].VerifyChannel.SendNewMessage(msg1)
+		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.OrderID.String()[:5], m.AskOrders[0].Data.OrderID.String()[:5], m.BidOrders[0].Data.Amount)
 
-		msg2 := app.NewMessage(m.AskOrders[0].Data.OrderID, 'M', wallet.AsWalletAddr(m.Address))
-		msg2.Sign(m.PrivateKey)
-		// m.ClientConfigs[m.AskOrders[0].Owner].VerifyChannel.SendNewMessage(msg2)
+		m.SendNewMessage(m.BidOrders[0].Owner, m.BidOrders[0].Data.OrderID, m.BidOrders[0].Data.Amount, 'M')
+		m.SendNewMessage(m.AskOrders[0].Owner, m.AskOrders[0].Data.OrderID, m.AskOrders[0].Data.Amount, 'M')
 
-		// m.ClientConfigs[m.BidOrders[0].Owner].VerifyChannel.UpdateExistedOrder(
-		// 	m.BidOrders[0].Data.OrderID, app.OrderUpdatedInfo{
-		// 		Status:        "M",
-		// 		MatchedAmount: m.BidOrders[0].Data.Amount,
-		// 	},
-		// )
-		// m.ClientConfigs[m.AskOrders[0].Owner].VerifyChannel.UpdateExistedOrder(
-		// 	m.AskOrders[0].Data.OrderID, app.OrderUpdatedInfo{
-		// 		Status:        "M",
-		// 		MatchedAmount: m.AskOrders[0].Data.Amount,
-		// 	},
-		// )
 		m.BidOrders = m.BidOrders[1:]
 		m.AskOrders = m.AskOrders[1:]
 	}

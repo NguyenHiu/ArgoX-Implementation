@@ -131,19 +131,22 @@ func (c *AppClient) startWatching(ch *client.Channel) {
 }
 
 func (c *AppClient) OnMyUpdate(from, to *channel.State) {
+	// _logger.Info("O!\n")
 	fromData := from.Data.(*app.VerifyAppData)
 	toData := to.Data.(*app.VerifyAppData)
+	// _logger.Debug("OnMyUpdate, len(from.Orders): %v\n", len(fromData.Orders))
+	// _logger.Debug("OnMyUpdate, len(to.Orders): %v\n", len(toData.Orders))
+	// _logger.Debug("OnMyUpdate, len(from.Msgs): %v\n", len(fromData.Msgs))
+	// _logger.Debug("OnMyUpdate, len(to.Msgs): %v\n", len(toData.Msgs))
 	if c.UseTrigger && len(fromData.Orders) < len(toData.Orders) {
 		for k, v := range toData.Orders {
-			if _, ok := fromData.Orders[k]; !ok {
+			_, ok := fromData.Orders[k]
+			if !ok {
 				c.TriggerChannel <- v
+				break
 			}
 		}
-		// for i := len(fromData.TestOrders); i < len(toData.TestOrders); i++ {
-		// 	c.TriggerChannel <- toData.TestOrders[i]
-		// }
 	}
-
 }
 
 // OpenAppChannel opens a new app channel with the specified peer.
@@ -183,7 +186,7 @@ func (c *AppClient) OpenAppChannel(peer wire.Address) *VerifyChannel {
 		panic(err)
 	}
 
-	ch.OnUpdate(c.OnMyUpdate)
+	ch.OnUpdate(c.OnMyUpdate) // Add OnUpdate func
 
 	// Start the on-chain event watcher. It automatically handles disputes.
 	c.startWatching(ch)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 	"perun.network/go-perun/backend/ethereum/wallet"
@@ -15,8 +16,8 @@ import (
 type Message struct {
 	MessageID     uuid.UUID
 	OrderID       uuid.UUID
-	Status        uint8
 	MatchedAmount *big.Int
+	Status        uint8
 	Owner         *wallet.Address
 	Signature     []byte
 }
@@ -31,7 +32,8 @@ func (m *Message) Clone() *Message {
 	// Deep copy for Signature
 	signatureCopy := make([]byte, len(m.Signature))
 	copy(signatureCopy, m.Signature)
-	_m := &Message{
+
+	return &Message{
 		MessageID:     m.MessageID,
 		OrderID:       m.OrderID,
 		MatchedAmount: matchedAmountCopy,
@@ -39,29 +41,24 @@ func (m *Message) Clone() *Message {
 		Owner:         m.Owner, // Directly copy the pointer if immutable
 		Signature:     signatureCopy,
 	}
-
-	if m.Owner != nil {
-		newOwner := *m.Owner // This assumes a shallow copy is sufficient for wallet.Address
-		_m.Owner = &newOwner
-	}
-
-	return _m
 }
 
-func NewMessage(orderID uuid.UUID, status uint8, owner *wallet.Address) *Message {
-	id, _ := uuid.NewRandom()
-	return &Message{
-		MessageID:     id,
-		OrderID:       orderID,
-		Status:        status,
-		MatchedAmount: new(big.Int),
-		Owner:         owner,
+func NewMsg(_orderID uuid.UUID, _matchedAmount *big.Int, _status uint8, _owner common.Address) Message {
+	messageID, _ := uuid.NewRandom()
+	return Message{
+		MessageID:     messageID,
+		OrderID:       _orderID,
+		MatchedAmount: _matchedAmount,
+		Status:        _status,
+		Owner:         wallet.AsWalletAddr(_owner),
 		Signature:     []byte{},
 	}
 }
 
-func (m *Message) Sign(prvKey *ecdsa.PrivateKey) error {
-	if m.Owner.Cmp(wallet.AsWalletAddr(crypto.PubkeyToAddress(prvKey.PublicKey))) != 0 {
+func (m *Message) Sign(prvkey ecdsa.PrivateKey) error {
+	pub, _ := prvkey.Public().(*ecdsa.PublicKey)
+	addr := crypto.PubkeyToAddress(*pub)
+	if m.Owner.Cmp(wallet.AsWalletAddr(addr)) != 0 {
 		return fmt.Errorf("private key does not match with the order's owner")
 	}
 
@@ -82,7 +79,7 @@ func (m *Message) Sign(prvKey *ecdsa.PrivateKey) error {
 
 	hashedData := crypto.Keccak256Hash(data.Bytes())
 
-	sig, err := crypto.Sign(hashedData.Bytes(), prvKey)
+	sig, err := crypto.Sign(hashedData.Bytes(), &prvkey)
 	if err != nil {
 		return fmt.Errorf("can not sign the order, err: %v", err)
 	}
@@ -106,7 +103,6 @@ func (m *Message) IsValidSignature() bool {
 	binary.Write(data, binary.BigEndian, PaddingToUint256(m.MatchedAmount))
 	binary.Write(data, binary.BigEndian, m.Status)
 	binary.Write(data, binary.BigEndian, m.Owner.Bytes())
-
 	hashedData := crypto.Keccak256Hash(data.Bytes())
 
 	pub, err := crypto.SigToPub(hashedData.Bytes(), m.Signature)
@@ -174,4 +170,59 @@ func (m *Message) Encode_TransferLightning() []byte {
 		_logger.Debug("binary.Write failed: %v\n", err)
 	}
 	return buf.Bytes()
+}
+
+// Decode Message
+// Follow the parameter orders when encoding
+func Message_Decode_TransferLightning(data []byte) (*Message, error) {
+	message := Message{}
+	buf := bytes.NewBuffer(data)
+
+	messageIDTemp := make([]byte, 16)
+	err := binary.Read(buf, binary.BigEndian, &messageIDTemp)
+	if err != nil {
+		return nil, err
+	}
+	err = message.MessageID.UnmarshalBinary(messageIDTemp)
+	if err != nil {
+		return nil, err
+	}
+
+	orderIDTemp := make([]byte, 16)
+	err = binary.Read(buf, binary.BigEndian, &orderIDTemp)
+	if err != nil {
+		return nil, err
+	}
+	err = message.OrderID.UnmarshalBinary(orderIDTemp)
+	if err != nil {
+		return nil, err
+	}
+
+	matchedAmount := make([]byte, 32)
+	err = binary.Read(buf, binary.BigEndian, &matchedAmount)
+	if err != nil {
+		return nil, err
+	}
+	message.MatchedAmount = new(big.Int).SetBytes(matchedAmount)
+
+	err = binary.Read(buf, binary.BigEndian, &message.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	owner := make([]byte, 20)
+	err = binary.Read(buf, binary.BigEndian, &owner)
+	if err != nil {
+		return nil, err
+	}
+	message.Owner = (*wallet.Address)(owner)
+
+	ownerSign := make([]byte, 65)
+	err = binary.Read(buf, binary.BigEndian, &ownerSign)
+	if err != nil {
+		return nil, err
+	}
+	message.Signature = ownerSign
+
+	return &message, nil
 }

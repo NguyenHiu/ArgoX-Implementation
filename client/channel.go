@@ -8,7 +8,6 @@ import (
 	"perun.network/go-perun/client"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
-	"github.com/google/uuid"
 )
 
 type VerifyChannel struct {
@@ -30,18 +29,19 @@ func (g *VerifyChannel) SendNewOrder(order *app.Order) {
 		return app.SendNewOrder(state, order)
 	})
 	if err != nil {
+		_logger.Error("PANIC\n")
 		panic(err) // We panic on error to keep the code simple.
 	}
 }
 
-func (g *VerifyChannel) UpdateExistedOrder(orderID uuid.UUID, updatedData app.OrderUpdatedInfo) {
+func (g *VerifyChannel) SendMessage(message *app.Message) {
 	err := g.ch.UpdateBy(context.TODO(), func(state *channel.State) error {
 		app, ok := state.App.(*app.VerifyApp)
 		if !ok {
 			return fmt.Errorf("invalid app type: %T", app)
 		}
 
-		return app.UpdateExistedOrder(state, orderID, updatedData)
+		return app.SendMessage(state, message)
 	})
 	if err != nil {
 		panic(err) // We panic on error to keep the code simple.
