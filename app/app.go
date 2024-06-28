@@ -59,14 +59,12 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 		if err != nil {
 			_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
 			return nil, err
-		} else {
-			fmt.Println("order: ", order)
 		}
 		from += constants.LIGHTNING_ORDER_SIZE
 
 		// Get no messages
 		noMsgs := int(binary.BigEndian.Uint64(data[from : from+8]))
-		// from += 8
+		from += 8
 
 		// Get messages
 		msgs := []*Message{}
@@ -196,8 +194,6 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 }
 
 func (a *VerifyApp) SendNewOrder(s *channel.State, order *Order) error {
-	_logger.Info("SendNewOrder....\n")
-
 	d, ok := s.Data.(*VerifyAppData)
 	if !ok {
 		return fmt.Errorf("invalid data type: %T", d)
@@ -213,8 +209,6 @@ func (a *VerifyApp) SendNewOrder(s *channel.State, order *Order) error {
 }
 
 func (a *VerifyApp) SendMessage(s *channel.State, message *Message) error {
-	_logger.Info("SendMessage....\n")
-
 	d, ok := s.Data.(*VerifyAppData)
 	if !ok {
 		return fmt.Errorf("invalid data type: %T", d)

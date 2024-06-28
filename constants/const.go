@@ -6,7 +6,7 @@ const (
 	STATUS_LENGTH        = 1
 	NUM_PARTS            = 2
 	LIGHTNING_ORDER_SIZE = 166 // 16 + 32 + 32 + 1 + 20 + 65
-	LIGHTNING_MSG_SIZE   = 65  // 16 + 16 + 32 + 1
+	LIGHTNING_MSG_SIZE   = 150 // 16 + 16 + 32 + 1 + 20 + 65
 	ETH                  = 0
 	GVN                  = 1
 	TRADER               = 0

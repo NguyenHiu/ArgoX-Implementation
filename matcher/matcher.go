@@ -169,6 +169,13 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	}
 }
 
+func (m *Matcher) SendNewMessage(to, orderID uuid.UUID, matchedAmount *big.Int, status uint8) {
+	_logger.Info("Sending new MESSAGE...\n")
+	msg := app.NewMsg(orderID, matchedAmount, status, m.Address)
+	msg.Sign(*m.PrivateKey)
+	m.ClientConfigs[to].VerifyChannel.SendMessage(&msg)
+}
+
 func (m *Matcher) Settle(userID uuid.UUID) {
 	m.ClientConfigs[userID].VerifyChannel.Settle()
 }

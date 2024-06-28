@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 )
 
@@ -26,25 +25,17 @@ func (m *Matcher) matching() bool {
 	m.Mux.Lock()
 	defer m.Mux.Unlock()
 
-	// <-time.After(time.Second * 1)
+	// <-time.After(time.Second)
 
 	// naive matching
 	for m.canMatch() {
-		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.OrderID[:5], m.AskOrders[0].Data.OrderID[:5], m.BidOrders[0].Data.Amount)
+		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.OrderID.String()[:5], m.AskOrders[0].Data.OrderID.String()[:5], m.BidOrders[0].Data.Amount)
 
-		bidMessage := app.NewMsg(m.BidOrders[0].Data.OrderID, m.BidOrders[0].Data.Amount, 'M', m.Address)
-		bidMessage.Sign(*m.PrivateKey)
-		// m.ClientConfigs[m.BidOrders[0].Owner].VerifyChannel.SendMessage(&bidMessage)
-
-		askMessage := app.NewMsg(m.AskOrders[0].Data.OrderID, m.AskOrders[0].Data.Amount, 'M', m.Address)
-		askMessage.Sign(*m.PrivateKey)
-		// m.ClientConfigs[m.AskOrders[0].Owner].VerifyChannel.SendMessage(&askMessage)
+		m.SendNewMessage(m.BidOrders[0].Owner, m.BidOrders[0].Data.OrderID, m.BidOrders[0].Data.Amount, 'M')
+		m.SendNewMessage(m.AskOrders[0].Owner, m.AskOrders[0].Data.OrderID, m.AskOrders[0].Data.Amount, 'M')
 
 		m.BidOrders = m.BidOrders[1:]
 		m.AskOrders = m.AskOrders[1:]
-
-		_logger.Debug("len(bidOrders): %v\n", len(m.BidOrders))
-		_logger.Debug("len(askOrders): %v\n", len(m.AskOrders))
 	}
 	return true
 }

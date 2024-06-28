@@ -1,9 +1,9 @@
 package app
 
 import (
-	"bytes"
 	"encoding/binary"
 	"io"
+	"sort"
 
 	"github.com/google/uuid"
 	"perun.network/go-perun/channel"
@@ -20,25 +20,36 @@ type VerifyAppData struct {
  * Format: <no_order>(uint64) [<order> <no_msg>(uint64) [<msg>]]
  */
 func (d *VerifyAppData) Encode(w io.Writer) error {
-	encodedData := new(bytes.Buffer)
-
 	// No orders
-	binary.Write(encodedData, binary.BigEndian, uint64(len(d.Orders)))
-	for _, v := range d.Orders {
-		// Order
-		binary.Write(encodedData, binary.BigEndian, v.Encode_TransferLightning())
+	if err := binary.Write(w, binary.BigEndian, uint64(len(d.Orders))); err != nil {
+		return err
+	}
 
-		// No msgs
-		binary.Write(encodedData, binary.BigEndian, uint64(len(d.Msgs[v.OrderID])))
-		// Message
-		for _, m := range d.Msgs[v.OrderID] {
-			binary.Write(encodedData, binary.BigEndian, m.Encode_TransferLightning())
+	ordersKeys := make([]uuid.UUID, 0, len(d.Orders))
+	for key := range d.Orders {
+		ordersKeys = append(ordersKeys, key)
+	}
+	sort.Slice(ordersKeys, func(i, j int) bool {
+		return ordersKeys[i].String() < ordersKeys[j].String()
+	})
+	for _, key := range ordersKeys {
+		order := d.Orders[key]
+
+		// Order
+		if err := binary.Write(w, binary.BigEndian, order.Encode_TransferLightning()); err != nil {
+			return err
 		}
 
-		// Write encoded data into writer
-		_, err := w.Write(encodedData.Bytes())
-
-		return err
+		// No msgs
+		if err := binary.Write(w, binary.BigEndian, uint64(len(d.Msgs[order.OrderID]))); err != nil {
+			return err
+		}
+		// Message
+		for _, m := range d.Msgs[order.OrderID] {
+			if err := binary.Write(w, binary.BigEndian, m.Encode_TransferLightning()); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -70,10 +81,10 @@ func (d *VerifyAppData) Clone() channel.Data {
 }
 
 func (d *VerifyAppData) SendNewOrder(order *Order) {
-	_logger.Debug("SendNewOrder, [1] len(d.Orders): %v\n", len(d.Orders))
+	// _logger.Debug("SendNewOrder, [1] len(d.Orders): %v\n", len(d.Orders))
 	d.Orders[order.OrderID] = order
-	_logger.Debug("SendNewOrder, [2] len(d.Orders): %v\n", len(d.Orders))
-	// d.Msgs[order.OrderID] = []*Message{}
+	// _logger.Debug("SendNewOrder, [2] len(d.Orders): %v\n", len(d.Orders))
+	d.Msgs[order.OrderID] = []*Message{}
 }
 
 // TODO: Instead of updating existing orders, create new message to notify the match event
