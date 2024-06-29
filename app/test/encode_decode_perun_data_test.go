@@ -23,8 +23,6 @@ func Test(t *testing.T) {
 
 	sampleData.Orders[order.OrderID] = order
 	sampleData.Orders[order_1.OrderID] = order_1
-	sampleData.Msgs[order.OrderID] = []*app.Message{}
-	sampleData.Msgs[order_1.OrderID] = []*app.Message{}
 
 	buf := new(bytes.Buffer)
 	if err := sampleData.Encode(buf); err != nil {
@@ -44,18 +42,9 @@ func Test(t *testing.T) {
 		return
 	}
 
-	if len(d.Msgs) != len(sampleData.Msgs) {
-		t.Errorf("incorrect the numer of message, expect %v, got %v", len(sampleData.Msgs), len(d.Msgs))
-		return
-	}
-
 	for k, v := range d.Orders {
 		if k != app.EndID && !order.Equal(v) {
 			t.Error("invalid decoded order")
-			return
-		}
-		if len(d.Msgs[k]) != 0 {
-			t.Errorf("incorrect the number of message, expect 0, got %v", len(d.Msgs[k]))
 			return
 		}
 	}

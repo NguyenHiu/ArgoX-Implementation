@@ -120,6 +120,7 @@ func NewMatcher(
 	}
 }
 
+// Create 2 channels: one for receiving orders, one for sending message
 func (m *Matcher) SetupClient(userID uuid.UUID) wire.Bus {
 	bus := wire.NewLocalBus()
 	appClient := util.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.App, m.Stakes, true, m.GavinAddress)
@@ -167,13 +168,6 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			Owner: userID,
 		})
 	}
-}
-
-func (m *Matcher) SendNewMessage(to, orderID uuid.UUID, matchedAmount *big.Int, status uint8) {
-	_logger.Info("Sending new MESSAGE...\n")
-	msg := app.NewMsg(orderID, matchedAmount, status, m.Address)
-	msg.Sign(*m.PrivateKey)
-	m.ClientConfigs[to].VerifyChannel.SendMessage(&msg)
 }
 
 func (m *Matcher) Settle(userID uuid.UUID) {

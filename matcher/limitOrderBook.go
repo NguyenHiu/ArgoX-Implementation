@@ -31,8 +31,9 @@ func (m *Matcher) matching() bool {
 	for m.canMatch() {
 		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.OrderID.String()[:5], m.AskOrders[0].Data.OrderID.String()[:5], m.BidOrders[0].Data.Amount)
 
-		m.SendNewMessage(m.BidOrders[0].Owner, m.BidOrders[0].Data.OrderID, m.BidOrders[0].Data.Amount, 'M')
-		m.SendNewMessage(m.AskOrders[0].Owner, m.AskOrders[0].Data.OrderID, m.AskOrders[0].Data.Amount, 'M')
+		// TODO:
+		// Update the status of Lightning Order Book by calling api
+		// 	--> Create a servivce to show
 
 		m.BidOrders = m.BidOrders[1:]
 		m.AskOrders = m.AskOrders[1:]
