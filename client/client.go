@@ -131,13 +131,8 @@ func (c *AppClient) startWatching(ch *client.Channel) {
 }
 
 func (c *AppClient) OnMyUpdate(from, to *channel.State) {
-	// _logger.Info("O!\n")
 	fromData := from.Data.(*app.VerifyAppData)
 	toData := to.Data.(*app.VerifyAppData)
-	// _logger.Debug("OnMyUpdate, len(from.Orders): %v\n", len(fromData.Orders))
-	// _logger.Debug("OnMyUpdate, len(to.Orders): %v\n", len(toData.Orders))
-	// _logger.Debug("OnMyUpdate, len(from.Msgs): %v\n", len(fromData.Msgs))
-	// _logger.Debug("OnMyUpdate, len(to.Msgs): %v\n", len(toData.Msgs))
 	if c.UseTrigger && len(fromData.Orders) < len(toData.Orders) {
 		for k, v := range toData.Orders {
 			_, ok := fromData.Orders[k]

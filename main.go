@@ -12,8 +12,10 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/data"
 	"github.com/NguyenHiu/lightning-exchange/deploy"
+	"github.com/NguyenHiu/lightning-exchange/listener"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/matcher"
+	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
 	"github.com/ethereum/go-ethereum/common"
@@ -81,25 +83,25 @@ func main() {
 	deploy.DeployContracts()
 	token, onchain, adj, assetHolders, appAddr := getContracts()
 
-	// // Listen events from onchain contract
-	// go listener.StartListener(onchain)
+	// Listen events from onchain contract
+	go listener.StartListener(onchain)
 
-	// // Create a Reporter
-	// rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
-	// if err != nil {
-	// 	_logger.Error("Create reporter error, err: %v\n", err)
-	// }
-	// // Start the reporter
-	// rp.Listening()
-	// rp.Reporting()
+	// Create a Reporter
+	rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
+	if err != nil {
+		_logger.Error("Create reporter error, err: %v\n", err)
+	}
+	// Start the reporter
+	rp.Listening()
+	rp.Reporting()
 
 	clientNode, err := ethclient.Dial(constants.CHAIN_URL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// // Start Super Matcher
-	// go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
+	// Start Super Matcher
+	go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	superMatcherURI := fmt.Sprintf("http://127.0.0.1:%v", constants.SUPER_MATCHER_PORT)
 
@@ -130,70 +132,81 @@ func main() {
 
 	{
 		// Create Order 2
-		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet())
-		order_2.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order_2)
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
+		// <-time.After(time.Second * 5)
+	}
+
+	{
+		<-time.After(time.Second * 3)
+		// Create Order 2
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
 		// <-time.After(time.Second * 5)
 	}
 
 	{
 		// Create Order 2
-		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order_2.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order_2)
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
 		// <-time.After(time.Second * 5)
 	}
 
 	{
 		// Create Order 2
-		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order_2.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order_2)
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
 		// <-time.After(time.Second * 5)
 	}
 
 	{
 		// Create Order 2
-		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order_2.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order_2)
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
 		// <-time.After(time.Second * 5)
 	}
 
 	{
-		// Create Order 2
-		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order_2.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order_2)
-		// <-time.After(time.Second * 5)
+		// Create Order 1
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_ALICE)
+		alice.SendNewOrder(order)
 	}
 
-	// Create Order 1
-	order_1 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
-	order_1.Sign(constants.KEY_ALICE)
-	alice.SendNewOrder(order_1)
-
-	order_4 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
-	order_4.Sign(constants.KEY_ALICE)
-	alice.SendNewOrder(order_4)
-
-	order_3 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-	order_3.Sign(constants.KEY_BOB)
-	bob.SendNewOrder(order_3)
-
-	// Create Final Order
-	lastOrder_1, err := app.EndOrder(constants.KEY_ALICE)
-	if err != nil {
-		_logger.Error("create an end order is fail, err: %v\n", err)
+	{
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_ALICE)
+		alice.SendNewOrder(order)
 	}
-	alice.SendNewOrder(lastOrder_1)
 
-	// Create Final Order
-	lastOrder_2, err := app.EndOrder(constants.KEY_BOB)
-	if err != nil {
-		_logger.Error("create an end order is fail, err: %v\n", err)
+	{
+		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
 	}
-	bob.SendNewOrder(lastOrder_2)
+
+	{
+		// Create Final Order
+		order, err := app.EndOrder(constants.KEY_ALICE)
+		if err != nil {
+			_logger.Error("create an end order is fail, err: %v\n", err)
+		}
+		alice.SendNewOrder(order)
+	}
+
+	{
+		// Create Final Order
+		order, err := app.EndOrder(constants.KEY_BOB)
+		if err != nil {
+			_logger.Error("create an end order is fail, err: %v\n", err)
+		}
+		bob.SendNewOrder(order)
+	}
 
 	// Payout.
 	_logger.Info("Settle\n")

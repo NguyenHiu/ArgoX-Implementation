@@ -138,12 +138,12 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	}
 	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
-	// go m.goBatching()
+	go m.goBatching()
 	return true
 }
 
 func (m *Matcher) goBatching() {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
