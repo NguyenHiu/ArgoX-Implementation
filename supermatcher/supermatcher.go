@@ -101,7 +101,7 @@ func (sm *SuperMatcher) Process() {
 
 	// If the batch is empty, stop
 	if len(validOrders) == 0 {
-		_logger.Debug("batch (%v) is empty", batch.BatchID)
+		_logger.Debug("batch (%v) is empty\n", batch.BatchID)
 		return
 	}
 

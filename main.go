@@ -168,7 +168,7 @@ func main() {
 		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
 		order.Sign(constants.KEY_BOB)
 		bob.SendNewOrder(order)
-		// <-time.After(time.Second * 5)
+		<-time.After(time.Second * 10)
 	}
 
 	{

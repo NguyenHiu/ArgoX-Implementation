@@ -106,6 +106,7 @@ func WatchAcceptBatch(instance *onchain.Onchain, opt *bind.WatchOpts) {
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Accept] Batch::%v\n", id.String())
+			// LogOrderBookOverview(instance)
 		}
 	}
 }
@@ -195,6 +196,7 @@ func WatchRevertBatch(instance *onchain.Onchain, opt *bind.WatchOpts) {
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Revert] Batch::%v\n", id.String())
+			// LogOrderBookOverview(instance)
 		}
 	}
 }

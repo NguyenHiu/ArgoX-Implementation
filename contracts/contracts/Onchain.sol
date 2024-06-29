@@ -128,7 +128,9 @@ contract Onchain {
         _batchMapping[batchID].time = 0;
 
         // revert
-        _tryRevertBatch(_tradeMapping[batchID]);
+        bytes16 _tradedBatch = _tradeMapping[batchID];
+        delete _tradeMapping[batchID];
+        _tryRevertBatch(_tradedBatch);
         emit RemoveBatchOutOfDate(batchID);
         emit PunishMatcher(_batchMapping[batchID].owner);
     }
@@ -334,7 +336,7 @@ contract Onchain {
     }
 
     function _tryRevertBatch(bytes16 batchID) internal {
-        if (_batchMapping[batchID].time == 0) {
+        if (_batchMapping[batchID].time == 0 && _tradeMapping[batchID] != 0x00000000000000000000000000000000) {
             emit RevertBatch(batchID);
             Batch memory b = _batchMapping[batchID];
             _sendBatch(b);
