@@ -18,15 +18,11 @@ func (d *VerifyAppData) computeFinalBalances(bals channel.Balances) channel.Bala
 	matcherReceivedETH := &big.Int{}
 	matcherReceivedGAV := &big.Int{}
 
-	for k, v := range d.Orders {
-		if len(d.Msgs[k]) != 0 {
-			if v.Side == constants.BID {
-				matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, v.Price)
-				matcherReceivedGAV = new(big.Int).Sub(matcherReceivedGAV, d.Msgs[k][len(d.Msgs[k])-1].MatchedAmount)
-			} else {
-				matcherReceivedETH = new(big.Int).Sub(matcherReceivedETH, v.Price)
-				matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, d.Msgs[k][len(d.Msgs[k])-1].MatchedAmount)
-			}
+	for _, v := range d.Orders {
+		if v.Side == constants.BID {
+			matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, v.Amount)
+		} else {
+			matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, v.Amount)
 		}
 	}
 

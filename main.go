@@ -136,45 +136,42 @@ func main() {
 		// <-time.After(time.Second * 5)
 	}
 
-	// {
-	// 	// Create Order 2
-	// 	order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-	// 	order_2.Sign(constants.KEY_BOB)
-	// 	bob.SendNewOrder(order_2)
-	// 	// <-time.After(time.Second * 5)
-	// }
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+		// <-time.After(time.Second * 5)
+	}
 
-	// {
-	// 	// Create Order 2
-	// 	order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-	// 	order_2.Sign(constants.KEY_BOB)
-	// 	bob.SendNewOrder(order_2)
-	// 	// <-time.After(time.Second * 5)
-	// }
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+		// <-time.After(time.Second * 5)
+	}
 
-	// {
-	// 	// Create Order 2
-	// 	order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-	// 	order_2.Sign(constants.KEY_BOB)
-	// 	bob.SendNewOrder(order_2)
-	// 	// <-time.After(time.Second * 5)
-	// }
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+		// <-time.After(time.Second * 5)
+	}
 
-	// {
-	// 	// Create Order 2
-	// 	order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-	// 	order_2.Sign(constants.KEY_BOB)
-	// 	bob.SendNewOrder(order_2)
-	// 	// <-time.After(time.Second * 5)
-	// }
+	{
+		// Create Order 2
+		order_2 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order_2.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order_2)
+		// <-time.After(time.Second * 5)
+	}
 
 	// Create Order 1
 	order_1 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
 	order_1.Sign(constants.KEY_ALICE)
 	alice.SendNewOrder(order_1)
-
-	_logger.Debug("Waiting 5s...\n")
-	<-time.After(time.Second * 5)
 
 	order_4 := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
 	order_4.Sign(constants.KEY_ALICE)
@@ -184,12 +181,12 @@ func main() {
 	order_3.Sign(constants.KEY_BOB)
 	bob.SendNewOrder(order_3)
 
-	// // fmt.Println("BID: ", matcher1.BidOrders)
-	// // fmt.Println("ASK: ", matcher1.AskOrders)
-	// _logger.Debug("Waiting for 1 seconds...\n")
-	// <-time.After(1 * time.Second)
-	// _logger.Debug("Waiting 5s...\n")
-	// <-time.After(time.Second * 5)
+	// Create Final Order
+	lastOrder_1, err := app.EndOrder(constants.KEY_ALICE)
+	if err != nil {
+		_logger.Error("create an end order is fail, err: %v\n", err)
+	}
+	alice.SendNewOrder(lastOrder_1)
 
 	// Create Final Order
 	lastOrder_2, err := app.EndOrder(constants.KEY_BOB)
@@ -197,16 +194,7 @@ func main() {
 		_logger.Error("create an end order is fail, err: %v\n", err)
 	}
 	bob.SendNewOrder(lastOrder_2)
-	// Create Final Order
 
-	lastOrder_1, err := app.EndOrder(constants.KEY_ALICE)
-	if err != nil {
-		_logger.Error("create an end order is fail, err: %v\n", err)
-	}
-	alice.SendNewOrder(lastOrder_1)
-
-	_logger.Debug("Waiting 5 seconds...\n")
-	<-time.After(time.Second * 5)
 	// Payout.
 	_logger.Info("Settle\n")
 	alice.Settle()

@@ -33,7 +33,6 @@ func (a *VerifyApp) Def() wallet.Address {
 func (a *VerifyApp) InitData() *VerifyAppData {
 	return &VerifyAppData{
 		Orders: make(map[uuid.UUID]*Order),
-		Msgs:   make(map[uuid.UUID][]*Message),
 	}
 }
 
@@ -62,25 +61,7 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 		}
 		from += constants.LIGHTNING_ORDER_SIZE
 
-		// Get no messages
-		noMsgs := int(binary.BigEndian.Uint64(data[from : from+8]))
-		from += 8
-
-		// Get messages
-		msgs := []*Message{}
-		for j := 0; j < noMsgs; j++ {
-			msg, err := Message_Decode_TransferLightning(data[from : from+constants.LIGHTNING_MSG_SIZE])
-			if err != nil {
-				_logger.Error("Message Decode Transfer Lightning fail, err: %v\n", err)
-				return nil, err
-			}
-			from += constants.LIGHTNING_MSG_SIZE
-
-			msgs = append(msgs, msg)
-		}
-
 		d.Orders[order.OrderID] = order
-		d.Msgs[order.OrderID] = msgs
 	}
 
 	return d, nil
@@ -152,28 +133,6 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 				_logger.Error("invalid transition: \n")
 				return fmt.Errorf("invalid transition: ")
 			}
-
-			// Check if messages stay the same or increase by 1
-			if len(fromData.Msgs[k])+1 != len(toData.Msgs[k]) && len(fromData.Msgs[k]) != len(toData.Msgs[k]) {
-				_logger.Error("invalid transition: the number of messages in new state is incorrect\n")
-				return fmt.Errorf("invalid transition: the number of messages in new state is incorrect")
-			}
-
-			if len(toData.Msgs[k])+1 == len(fromData.Msgs[k]) {
-				// Validate new message
-				if !toData.Msgs[k][len(toData.Msgs[k])-1].IsValidSignature() {
-					_logger.Error("invalid transition: the new message is not valid\n")
-					return fmt.Errorf("invalid transition: the new message is not valid")
-				}
-				flag = true
-			}
-
-			for i, m := range fromData.Msgs[k] {
-				if !m.Equal(toData.Msgs[k][i]) {
-					_logger.Error("invalid transition: old messages were changed\n")
-					return fmt.Errorf("invalid transition: old messages were changed")
-				}
-			}
 		}
 	}
 
@@ -205,16 +164,5 @@ func (a *VerifyApp) SendNewOrder(s *channel.State, order *Order) error {
 		s.IsFinal = true
 		s.Balances = d.computeFinalBalances(s.Balances)
 	}
-	return nil
-}
-
-func (a *VerifyApp) SendMessage(s *channel.State, message *Message) error {
-	d, ok := s.Data.(*VerifyAppData)
-	if !ok {
-		return fmt.Errorf("invalid data type: %T", d)
-	}
-
-	d.SendMessage(message)
-
 	return nil
 }
