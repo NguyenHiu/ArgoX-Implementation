@@ -13,7 +13,7 @@ import (
 	"perun.network/go-perun/wire"
 )
 
-var _logger = logger.NewLogger("User", logger.None, logger.None)
+var _logger = logger.NewLogger("User", logger.Magenta, logger.None)
 
 type User struct {
 	ID            uuid.UUID

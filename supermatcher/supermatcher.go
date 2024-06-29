@@ -16,7 +16,7 @@ import (
 )
 
 // var _logger = logger.NewLogger("\033[1mSuper Matcher\033[0m", logger.None, logger.None)
-var _logger = logger.NewLogger("Super Matcher", logger.Green, logger.Bold)
+var _logger = logger.NewLogger("Super Matcher", logger.White, logger.Bold)
 
 type SuperMatcher struct {
 	OnchainInstance *onchain.Onchain

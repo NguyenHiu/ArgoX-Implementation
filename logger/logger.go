@@ -7,14 +7,13 @@ const (
 	Reset        = "\033[0m"
 	Bold         = "\033[1m"
 	Italic       = "\033[3m"
-	Red          = "\033[31m"
-	Green        = "\033[32m"
-	Yellow       = "\033[33m"
-	Blue         = "\033[34m"
-	Purple       = "\033[35m"
-	Cyan         = "\033[36m"
-	White        = "\033[37m"
-	Magenta      = "\033[35m"
+	Red          = "\033[31m" // Main
+	Green        = "\033[32m" // Matcher
+	Yellow       = "\033[33m" // Listener
+	Blue         = "\033[34m" // Reporter
+	Magenta      = "\033[35m" // User
+	Cyan         = "\033[36m" //
+	White        = "\033[37m" // Super matcher
 	LightGray    = "\033[37m"
 	DarkGray     = "\033[90m"
 	LightRed     = "\033[91m"
@@ -59,13 +58,22 @@ func (l *Logger) ChangeName(_newName string, _color string, _format string) {
 }
 
 func (l *Logger) Debug(format string, a ...any) {
-	fmt.Printf("%-*s: %v", title_length+len(l.formatedName)-len(l.name), fmt.Sprintf("[%sDEBUG%s] - %s", Blue, Reset, l.formatedName), fmt.Sprintf(format, a...))
+	fmt.Printf("%-*s: %s%v%s", title_length+len(l.formatedName)-len(l.name), fmt.Sprintf("[%sDEBUG%s] - %s", Blue, Reset, l.formatedName), l.goLightxD(), fmt.Sprintf(format, a...), Reset)
 }
 
 func (l *Logger) Info(format string, a ...any) {
-	fmt.Printf("%-*s: %v", title_length+len(l.formatedName)-len(l.name), fmt.Sprintf("[%sINFO%s] - %s", Green, Reset, l.formatedName), fmt.Sprintf(format, a...))
+	fmt.Printf("%-*s: %s%v%s", title_length+len(l.formatedName)-len(l.name), fmt.Sprintf("[%sINFO%s]  - %s", Green, Reset, l.formatedName), l.goLightxD(), fmt.Sprintf(format, a...), Reset)
 }
 
 func (l *Logger) Error(format string, a ...any) {
-	fmt.Printf("%-*s: %v", title_length+len(l.formatedName)-len(l.name), fmt.Sprintf("[%sERROR%s] - %s", Red, Reset, l.formatedName), fmt.Sprintf(format, a...))
+	fmt.Printf("%-*s: %s%v%s", title_length+len(l.formatedName)-len(l.name), fmt.Sprintf("[%sERROR%s] - %s", Red, Reset, l.formatedName), l.goLightxD(), fmt.Sprintf(format, a...), Reset)
+}
+
+func (l *Logger) goLightxD() string {
+	if l.color == None {
+		return None
+	}
+
+	_color := fmt.Sprintf("%s%c%s", l.color[:2], int(l.color[2])+6, l.color[3:])
+	return _color
 }

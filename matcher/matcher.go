@@ -18,12 +18,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
-	"perun.network/go-perun/backend/ethereum/wallet"
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	"perun.network/go-perun/wire"
 )
 
-var _logger = logger.NewLogger("Matcher", logger.None, logger.None)
+var _logger = logger.NewLogger("Matcher", logger.Green, logger.None)
 
 type ClientConfig struct {
 	AppClient     *client.AppClient
@@ -40,7 +39,7 @@ type Matcher struct {
 	ID            uuid.UUID
 	ClientConfigs map[uuid.UUID]*ClientConfig // store traders' channel
 	Adjudicator   common.Address
-	AssetHolders  []wallet.Address
+	AssetHolders  []ethwallet.Address
 	App           *app.VerifyApp
 	Stakes        []*big.Int
 
@@ -161,7 +160,7 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 		if order.Side == constants.ASK {
 			_side = "ask"
 		}
-		_logger.Info("[%v] Receive an order: {%v, %v, %v	}\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, _side)
+		_logger.Info("[%v] Receive an order: {%v, %v, %v}\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, _side)
 
 		m.addOrder(&MatcherOrder{
 			Data:  order,
