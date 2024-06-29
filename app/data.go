@@ -60,14 +60,3 @@ func (d *VerifyAppData) Clone() channel.Data {
 func (d *VerifyAppData) SendNewOrder(order *Order) {
 	d.Orders[order.OrderID] = order
 }
-
-func (d *VerifyAppData) SendNewMessage(message *Message) {
-	d.Msgs[message.OrderID] = append(d.Msgs[message.OrderID], message)
-}
-
-// TODO:
-// TODO:
-// TODO: Add component-each-component from mapping-data branch into this branch
-// TODO: Note to run the program to check if the new code is right or not!
-// TODO:
-// TODO:

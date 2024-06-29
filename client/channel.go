@@ -33,20 +33,6 @@ func (g *VerifyChannel) SendNewOrder(order *app.Order) {
 	}
 }
 
-func (g *VerifyChannel) SendNewMessage(message *app.Message) {
-	err := g.ch.UpdateBy(context.TODO(), func(state *channel.State) error {
-		app, ok := state.App.(*app.VerifyApp)
-		if !ok {
-			return fmt.Errorf("invalid app type: %T", app)
-		}
-
-		return app.SendNewMessage(state, message)
-	})
-	if err != nil {
-		panic(err) // We panic on error to keep the code simple.
-	}
-}
-
 // Settle settles the app channel and withdraws the funds.
 func (g *VerifyChannel) Settle() {
 	// Channel should be finalized through last ("winning") move.

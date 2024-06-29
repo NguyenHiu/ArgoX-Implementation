@@ -78,13 +78,9 @@ func (a *VerifyApp) ValidInit(p *channel.Params, s *channel.State) error {
 		return fmt.Errorf("invalid data type: %T", s.Data)
 	}
 
-	if len(appData.Orders) != 0 || len(appData.Msgs) != 0 {
+	if len(appData.Orders) != 0 {
 		return fmt.Errorf("invalid starting")
 	}
-
-	// if len(appData.Orders) != 0 {
-	// 	return fmt.Errorf("invalid starting")
-	// }
 
 	return nil
 }
