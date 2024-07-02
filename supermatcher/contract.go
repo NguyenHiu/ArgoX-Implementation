@@ -6,12 +6,13 @@ import (
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/client"
+	"github.com/NguyenHiu/lightning-exchange/matcher"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func (sm *SuperMatcher) SendBatch(batch *Batch) {
+func (sm *SuperMatcher) SendBatch(batch *matcher.Batch) {
 	sm.Mutex.Lock()
 
 	_logger.Info("Sends batch::%v to onchain\n", batch.BatchID.String())

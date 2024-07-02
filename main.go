@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/data"
@@ -132,63 +131,67 @@ func main() {
 
 	{
 		// Create Order 2
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet())
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet())
 		order.Sign(constants.KEY_BOB)
 		bob.SendNewOrder(order)
-		// <-time.After(time.Second * 5)
-	}
-
-	{
-		<-time.After(time.Second * 3)
-		// Create Order 2
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		// <-time.After(time.Second * 5)
+		// <-time.After(time.Second * 3)
 	}
 
 	{
 		// Create Order 2
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		// <-time.After(time.Second * 5)
-	}
-
-	{
-		// Create Order 2
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		// <-time.After(time.Second * 5)
-	}
-
-	{
-		// Create Order 2
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order := app.NewOrder(big.NewInt(5), big.NewInt(2), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
 		order.Sign(constants.KEY_BOB)
 		bob.SendNewOrder(order)
 		<-time.After(time.Second * 10)
 	}
 
 	{
-		// Create Order 1
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_ALICE)
-		alice.SendNewOrder(order)
-	}
-
-	{
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_ALICE)
-		alice.SendNewOrder(order)
-	}
-
-	{
-		order := app.NewOrder(client.EthToWei(big.NewFloat(5)), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		// Create Order 2
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
 		order.Sign(constants.KEY_BOB)
 		bob.SendNewOrder(order)
+		<-time.After(time.Second * 3)
 	}
+
+	{
+		// Create Order 2
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
+		<-time.After(time.Second * 3)
+	}
+
+	{
+		// Create Order 2
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
+		<-time.After(time.Second * 3)
+	}
+
+	{
+		// Create Order 1
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_ALICE)
+		alice.SendNewOrder(order)
+		<-time.After(time.Second * 3)
+	}
+
+	{
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_ALICE)
+		alice.SendNewOrder(order)
+		<-time.After(time.Second * 3)
+	}
+
+	{
+		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
+		order.Sign(constants.KEY_BOB)
+		bob.SendNewOrder(order)
+		<-time.After(time.Second * 3)
+	}
+
+	<-time.After(time.Second * 10)
 
 	{
 		// Create Final Order

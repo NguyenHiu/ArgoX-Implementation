@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/NguyenHiu/lightning-exchange/matcher"
 )
 
 func (sm *SuperMatcher) SetupHTTPServer() {
@@ -18,12 +20,12 @@ func (sm *SuperMatcher) SetupHTTPServer() {
 			log.Fatal(err)
 		}
 
-		batch, err := Batch_Decode_TransferBatching(data)
-		if err != nil {
+		batch := &matcher.Batch{}
+		if err := batch.Decode_TransferBatching(data); err != nil {
 			log.Fatal(err)
 		}
 
-		if batch.Equal(&Batch{}) {
+		if batch.Equal(&matcher.Batch{}) {
 			fmt.Fprintln(w, "missing param(s)")
 		}
 

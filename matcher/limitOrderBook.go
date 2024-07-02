@@ -1,6 +1,9 @@
 package matcher
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/NguyenHiu/lightning-exchange/constants"
 )
 
@@ -15,6 +18,7 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
+	// _logger.Debug("\n%v", m.logDebug())
 }
 
 func (m *Matcher) matching() bool {
@@ -29,14 +33,24 @@ func (m *Matcher) matching() bool {
 
 	// naive matching
 	for m.canMatch() {
-		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.OrderID.String()[:5], m.AskOrders[0].Data.OrderID.String()[:5], m.BidOrders[0].Data.Amount)
+		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.From.String()[:5], m.AskOrders[0].Data.From.String()[:5], m.BidOrders[0].Data.Amount)
 
-		// TODO:
-		// Update the status of Lightning Order Book by calling api
-		// 	--> Create a servivce to show
+		minAmount := m.BidOrders[0].Data.Amount
+		if minAmount.Cmp(m.AskOrders[0].Data.Amount) == 1 {
+			minAmount = m.AskOrders[0].Data.Amount
+		}
 
-		m.BidOrders = m.BidOrders[1:]
-		m.AskOrders = m.AskOrders[1:]
+		m.BidOrders[0].Data.Amount = new(big.Int).Sub(m.BidOrders[0].Data.Amount, minAmount)
+		m.AskOrders[0].Data.Amount = new(big.Int).Sub(m.AskOrders[0].Data.Amount, minAmount)
+
+		m.NewTrade(m.BidOrders[0].Data.From, m.AskOrders[0].Data.From, minAmount)
+
+		if m.BidOrders[0].Data.Amount.Cmp(new(big.Int)) == 0 {
+			m.BidOrders = m.BidOrders[1:]
+		}
+		if m.AskOrders[0].Data.Amount.Cmp(new(big.Int)) == 0 {
+			m.AskOrders = m.AskOrders[1:]
+		}
 	}
 	return true
 }
@@ -73,4 +87,18 @@ func addAccordingTheOrder(order *MatcherOrder, orders []*MatcherOrder) []*Matche
 	}
 
 	return orders
+}
+
+func (m *Matcher) logDebug() string {
+	str := ""
+	str += "# ASK:\n"
+	for _, order := range m.AskOrders {
+		str += fmt.Sprintf("\t%v - %v\n", order.Data.Price, order.Data.Amount)
+	}
+	str += "========================\n"
+	str += "# BID:\n"
+	for _, order := range m.BidOrders {
+		str += fmt.Sprintf("\t%v - %v\n", order.Data.Price, order.Data.Amount)
+	}
+	return str
 }

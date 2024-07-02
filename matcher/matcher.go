@@ -30,7 +30,7 @@ type ClientConfig struct {
 }
 
 type MatcherOrder struct {
-	Data  *app.Order
+	Data  *ShadowOrder
 	Owner uuid.UUID
 }
 
@@ -47,8 +47,12 @@ type Matcher struct {
 	GavinAddress common.Address
 
 	// Order Book
-	BidOrders []*MatcherOrder
-	AskOrders []*MatcherOrder
+	BidOrders         []*MatcherOrder
+	AskOrders         []*MatcherOrder
+	Orders            map[uuid.UUID]*app.Order
+	ExecutedTrade     []*Trade
+	mappingBidtoTrade map[uuid.UUID][]*Trade
+	mappingAskToTrade map[uuid.UUID][]*Trade
 
 	// Super Matcher & Onchain Contract
 	SuperMatcherURI string             // Super Matcher API Server
@@ -73,8 +77,8 @@ func NewMatcher(
 ) *Matcher {
 	id, _ := uuid.NewRandom()
 	verifierApp := app.NewVerifyApp(ethwallet.AsWalletAddr(appAddr))
-	stakeETH := client.EthToWei(big.NewFloat(5))
-	stakeGVN := big.NewInt(5)
+	stakeETH := big.NewInt(1000)
+	stakeGVN := big.NewInt(1000)
 	ethwalletAssetHolders := []ethwallet.Address{}
 	for _, asset := range assetHolders {
 		ethwalletAssetHolders = append(ethwalletAssetHolders, *ethwallet.AsWalletAddr(asset))
@@ -102,8 +106,12 @@ func NewMatcher(
 		App:           verifierApp,
 		Stakes:        []*big.Int{stakeETH, stakeGVN},
 
-		BidOrders: []*MatcherOrder{},
-		AskOrders: []*MatcherOrder{},
+		BidOrders:         []*MatcherOrder{},
+		AskOrders:         []*MatcherOrder{},
+		Orders:            make(map[uuid.UUID]*app.Order),
+		ExecutedTrade:     []*Trade{},
+		mappingBidtoTrade: make(map[uuid.UUID][]*Trade),
+		mappingAskToTrade: make(map[uuid.UUID][]*Trade),
 
 		SuperMatcherURI: superMatcherURI,
 		OnchainInstance: instance,
@@ -117,6 +125,23 @@ func NewMatcher(
 
 		GavinAddress: gavinAddress,
 	}
+}
+
+func (m *Matcher) NewTrade(bid uuid.UUID, ask uuid.UUID, amount *big.Int) {
+	executedtrade := &Trade{
+		BidOrder:  bid,
+		AskOrder:  ask,
+		Amount:    amount,
+		Owner:     m.Address,
+		Signature: []byte{},
+	}
+
+	executedtrade.Sign(m.PrivateKey)
+
+	m.ExecutedTrade = append(m.ExecutedTrade, executedtrade)
+	m.mappingBidtoTrade[bid] = append(m.mappingBidtoTrade[bid], executedtrade)
+	m.mappingAskToTrade[ask] = append(m.mappingAskToTrade[ask], executedtrade)
+
 }
 
 // Create 2 channels: one for receiving orders, one for sending message
@@ -142,7 +167,7 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 }
 
 func (m *Matcher) goBatching() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -162,8 +187,14 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 		}
 		_logger.Info("[%v] Receive an order: {%v, %v, %v}\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, _side)
 
+		m.Orders[order.OrderID] = order
 		m.addOrder(&MatcherOrder{
-			Data:  order,
+			Data: &ShadowOrder{
+				Price:  order.Price,
+				Amount: order.Amount,
+				Side:   order.Side,
+				From:   order.OrderID,
+			},
 			Owner: userID,
 		})
 	}

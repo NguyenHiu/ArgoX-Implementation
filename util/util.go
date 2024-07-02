@@ -226,7 +226,7 @@ func mintGavinToken(tokenInstance *token.Token, client *ethclient.Client, privat
 
 	addr := crypto.PubkeyToAddress(privateKey.PublicKey)
 	prepareNonceAndGasPrice(auth, client, addr)
-	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(1000)); err != nil {
+	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(2000)); err != nil {
 		log.Fatal(err)
 	}
 

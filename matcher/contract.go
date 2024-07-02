@@ -1,15 +1,16 @@
 package matcher
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"log"
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
-	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 )
 
@@ -52,16 +53,31 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 
 			onchainOrders := []onchain.OnchainOrder{}
 			for _, order := range batch.Orders {
-				_orderID, _ := order.Data.OrderID.MarshalBinary()
-				var _orderID16 [16]byte
-				copy(_orderID16[:], _orderID)
+				trades := new(bytes.Buffer)
+				for _, trade := range order.Trades {
+					tData, err := trade.Encode_TransferBatching()
+					if err != nil {
+						_logger.Error("sending batch's detail got error, encode trade, err: %v\n", err)
+					}
+					if err := binary.Write(trades, binary.BigEndian, tData); err != nil {
+						_logger.Error("sending batch's detail, hash a trade got error, err: %v\n", err)
+					}
+				}
+				tradeHash := crypto.Keccak256Hash(trades.Bytes())
+
+				oData, err := order.OriginalOrder.Encode_TransferBatching()
+				if err != nil {
+					_logger.Error("sending batch's detail, hash original order got error, err: %v\n", err)
+				}
+				originalOrderHash := crypto.Keccak256Hash(oData)
+
 				onchainOrders = append(onchainOrders, onchain.OnchainOrder{
-					OrderID:   _orderID16,
-					Price:     order.Data.Price,
-					Amount:    order.Data.Amount,
-					Side:      order.Data.Side,
-					Signature: util.CorrectSignToOnchain(order.Data.Signature),
-					Owner:     common.Address(common.FromHex(order.Data.Owner.String())),
+					Price:             order.ShadowOrder.Price,
+					Amount:            order.ShadowOrder.Amount,
+					Side:              order.ShadowOrder.Side,
+					From:              order.ShadowOrder.From,
+					TradeHash:         tradeHash,
+					OriginalOrderHash: originalOrderHash,
 				})
 			}
 

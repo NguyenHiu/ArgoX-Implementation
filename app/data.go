@@ -15,11 +15,10 @@ type VerifyAppData struct {
 
 /**
  * Encode encodes app data ([]byte) onto an io.Writer.
- * Format: <no_order>(uint64) [<order> <no_msg>(uint64) [<msg>]]
  */
 func (d *VerifyAppData) Encode(w io.Writer) error {
 	// No orders
-	if err := binary.Write(w, binary.BigEndian, uint64(len(d.Orders))); err != nil {
+	if err := binary.Write(w, binary.BigEndian, uint8(len(d.Orders))); err != nil {
 		return err
 	}
 

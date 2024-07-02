@@ -13,7 +13,7 @@ func (m *Matcher) SendBatch(batch *Batch) {
 	m.Batches[batch.BatchID] = batch
 	m.Mux.Unlock()
 
-	data, err := batch.Encode_TranferBatching()
+	data, err := batch.Encode_TransferBatching(m)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/logger"
+	"github.com/NguyenHiu/lightning-exchange/matcher"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,8 +24,8 @@ type SuperMatcher struct {
 	Auth            *bind.TransactOpts
 	Client          *ethclient.Client
 	Address         common.Address
-	Batches         []*Batch
-	Orders          map[uuid.UUID]bool
+	Batches         []*matcher.Batch
+	Orders          map[uuid.UUID][]*matcher.ExpandOrder
 
 	Port  int
 	Mutex sync.Mutex
@@ -52,8 +53,8 @@ func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, c
 		Auth:            auth,
 		Client:          client,
 		Address:         addr,
-		Batches:         []*Batch{},
-		Orders:          make(map[uuid.UUID]bool),
+		Batches:         []*matcher.Batch{},
+		Orders:          make(map[uuid.UUID][]*matcher.ExpandOrder),
 		Port:            port,
 	}
 
@@ -62,13 +63,21 @@ func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, c
 	return sm, nil
 }
 
-func (sm *SuperMatcher) isExists(order *Order) bool {
-	_, ok := sm.Orders[order.OrderID]
-	return ok
+func (sm *SuperMatcher) isExists(order *matcher.ExpandOrder) bool {
+	expandOrders, ok := sm.Orders[order.OriginalOrder.OrderID]
+	if !ok {
+		return false
+	}
+	for _, expandOrder := range expandOrders {
+		if expandOrder.Equal(order) {
+			return true
+		}
+	}
+	return false
 }
 
-func (sm *SuperMatcher) addOrder(order *Order) {
-	sm.Orders[order.OrderID] = true
+func (sm *SuperMatcher) addOrder(order *matcher.ExpandOrder) {
+	sm.Orders[order.OriginalOrder.OrderID] = append(sm.Orders[order.OriginalOrder.OrderID], order)
 }
 
 func (sm *SuperMatcher) Process() {
@@ -88,11 +97,10 @@ func (sm *SuperMatcher) Process() {
 	// The batch is already validated when being appended to the sm.Batches
 
 	// Filter orders in the batch
-	validOrders := []*Order{}
+	validOrders := []*matcher.ExpandOrder{}
 	for idx, order := range batch.Orders {
 		if sm.isExists(order) {
-			_logger.Debug("order at %v has already existed\n", idx)
-			// fmt.Printf("order at %v has already existed\n", idx)
+			_logger.Debug("Order at %v has already existed\n", idx)
 		} else {
 			sm.addOrder(order)
 			validOrders = append(validOrders, order)
@@ -101,7 +109,7 @@ func (sm *SuperMatcher) Process() {
 
 	// If the batch is empty, stop
 	if len(validOrders) == 0 {
-		_logger.Debug("batch (%v) is empty\n", batch.BatchID)
+		_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
 		return
 	}
 
@@ -109,7 +117,7 @@ func (sm *SuperMatcher) Process() {
 	if len(validOrders) != len(batch.Orders) {
 		_amount := &big.Int{}
 		for _, order := range validOrders {
-			_amount = new(big.Int).Add(_amount, order.Amount)
+			_amount = new(big.Int).Add(_amount, order.ShadowOrder.Amount)
 		}
 		batch.Amount = _amount
 		batch.Orders = validOrders
@@ -122,7 +130,7 @@ func (sm *SuperMatcher) Process() {
 
 }
 
-func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
+func (sm *SuperMatcher) CheckValidBatch(batch *matcher.Batch) bool {
 	// 1. valid owner: owner is a matcher & the signature is valid
 	if !sm.isMatcher(batch.Owner) {
 		_logger.Debug("Invalid Matcher\n")
@@ -136,8 +144,8 @@ func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 
 	// 2. check signatures of orders in the batch
 	for idx, order := range batch.Orders {
-		if !order.IsValidSignature() {
-			_logger.Debug("Invalid Order's Signature at %v \n", idx)
+		if !order.IsValidOrder(batch.Owner) {
+			_logger.Debug("Invalid Order at %v \n", idx)
 			return false
 		}
 	}
@@ -154,10 +162,11 @@ func (sm *SuperMatcher) processing() {
 	}
 }
 
-func (sm *SuperMatcher) AddBatch(batch *Batch) {
+func (sm *SuperMatcher) AddBatch(batch *matcher.Batch) {
 	if sm.CheckValidBatch(batch) {
 		sm.Mutex.Lock()
 		defer sm.Mutex.Unlock()
+		_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
 		sm.Batches = append(sm.Batches, batch)
 	}
 }

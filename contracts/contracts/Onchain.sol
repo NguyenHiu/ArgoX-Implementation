@@ -17,12 +17,12 @@ contract Onchain {
     }
 
     struct Order {
-        bytes16 orderID;
         uint256 price;
         uint256 amount;
         bool side;
-        bytes signature;
-        address owner;
+        bytes16 from;
+        bytes32 tradeHash;
+        bytes32 originalOrderHash;
     }
 
     Batch[] _bidBatches;
@@ -67,9 +67,7 @@ contract Onchain {
         return Strings.toHexString(uint256(uint160(_addr)), 20);
     }
 
-    function uintToString(
-        uint256 num
-    ) public pure returns (string memory) {
+    function uintToString(uint256 num) public pure returns (string memory) {
         return Strings.toString(num);
     }
 
@@ -148,32 +146,20 @@ contract Onchain {
         uint256 _temp = 0;
         bytes memory ordersHash;
         for (uint8 i = 0; i < _ords.length; i++) {
-            // Check signature
-            bytes memory packedOrder = abi.encodePacked(
-                _ords[i].orderID,
-                _ords[i].price,
-                _ords[i].amount,
-                _ords[i].side,
-                _ords[i].owner
-            );
-
-            bytes32 hashedOrder = keccak256(packedOrder);
-
-            // Check order's signature
-            if (
-                ECDSA.recover(hashedOrder, _ords[i].signature) != _ords[i].owner
-            ) {
-                emit InvalidOrder(batchID);
-                return;
-            }
             _temp += _ords[i].amount;
-
             // Prepare for batch verification
-            bytes memory _signature = _ords[i].signature;
-            _signature[64] = bytes1(uint8(_signature[64]) - 27);
             ordersHash = abi.encodePacked(
                 ordersHash,
-                abi.encodePacked(packedOrder, _signature)
+                keccak256(
+                    abi.encodePacked(
+                        _ords[i].price,
+                        _ords[i].amount,
+                        _ords[i].side,
+                        _ords[i].from
+                    )
+                ),
+                _ords[i].tradeHash,
+                _ords[i].originalOrderHash
             );
         }
 
@@ -336,7 +322,10 @@ contract Onchain {
     }
 
     function _tryRevertBatch(bytes16 batchID) internal {
-        if (_batchMapping[batchID].time == 0 && _tradeMapping[batchID] != 0x00000000000000000000000000000000) {
+        if (
+            _batchMapping[batchID].time == 0 &&
+            _tradeMapping[batchID] != 0x00000000000000000000000000000000
+        ) {
             emit RevertBatch(batchID);
             Batch memory b = _batchMapping[batchID];
             _sendBatch(b);
@@ -346,11 +335,11 @@ contract Onchain {
     /**
      * Debug Functions
      */
-    function GetBidOrders() public view returns(Batch[] memory) {
+    function GetBidOrders() public view returns (Batch[] memory) {
         return _bidBatches;
     }
 
-    function GetAskOrders() public view returns(Batch[] memory) {
+    function GetAskOrders() public view returns (Batch[] memory) {
         return _askBatches;
     }
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -44,23 +45,26 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 	d := a.InitData()
 
 	// Read data
-	data, err := io.ReadAll(r)
+	_data, err := io.ReadAll(r)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	data := bytes.NewBuffer(_data)
+
 	// Get no orders
-	noOrders := int(binary.BigEndian.Uint64(data[:8]))
-	from := 8
-	for i := 0; i < noOrders; i++ {
+	var noOrders uint8
+	if err := binary.Read(data, binary.BigEndian, &noOrders); err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < int(noOrders); i++ {
 		// Get order
-		order, err := Order_Decode_TransferLightning(data[from : from+constants.LIGHTNING_ORDER_SIZE])
-		if err != nil {
+		order := &Order{}
+		if err := order.Decode_TransferLightning(data); err != nil {
 			_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
 			return nil, err
 		}
-		from += constants.LIGHTNING_ORDER_SIZE
-
 		d.Orders[order.OrderID] = order
 	}
 
