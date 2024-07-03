@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/logger"
@@ -33,13 +34,18 @@ func (a *VerifyApp) Def() wallet.Address {
 
 func (a *VerifyApp) InitData() *VerifyAppData {
 	return &VerifyAppData{
-		Orders: make(map[uuid.UUID]*Order),
+		Orders:        make([]*Order, 0),
+		OrdersMapping: make(map[uuid.UUID]*Order),
+		Trades:        make([]*Trade, 0),
+		TradesMapping: make(map[uuid.UUID]*Trade),
+		BidToTrade:    make(map[uuid.UUID][]*Trade),
+		AskToTrade:    make(map[uuid.UUID][]*Trade),
 	}
 }
 
 /**
  * DecodeData decodes the channel data.
- * Format: <no_order>(uint64) [<order> <no_msg>(uint64) [<msg>]]
+ * Format: <no_order> <order>... <no message list> [<no message> <message>...]...
  */
 func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 	d := a.InitData()
@@ -65,7 +71,27 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 			_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
 			return nil, err
 		}
-		d.Orders[order.OrderID] = order
+		// Store order
+		d.Orders = append(d.Orders, order)
+		d.OrdersMapping[order.OrderID] = order
+	}
+
+	// No Trades
+	var noTrades uint8
+	if err := binary.Read(data, binary.BigEndian, &noOrders); err != nil {
+		return nil, err
+	}
+
+	// Each Trade
+	for i := 0; i < int(noTrades); i++ {
+		trade := &Trade{}
+		if err := trade.Decode_TransferLightning(data); err != nil {
+			return nil, err
+		}
+		d.BidToTrade[trade.BidOrder] = append(d.BidToTrade[trade.BidOrder], trade)
+		d.AskToTrade[trade.AskOrder] = append(d.AskToTrade[trade.AskOrder], trade)
+		d.Trades = append(d.Trades, trade)
+		d.TradesMapping[trade.TradeID] = trade
 	}
 
 	return d, nil
@@ -83,6 +109,18 @@ func (a *VerifyApp) ValidInit(p *channel.Params, s *channel.State) error {
 	}
 
 	if len(appData.Orders) != 0 {
+		return fmt.Errorf("invalid starting")
+	}
+
+	if len(appData.Trades) != 0 {
+		return fmt.Errorf("invalid starting")
+	}
+
+	if len(appData.AskToTrade) != 0 {
+		return fmt.Errorf("invalid starting")
+	}
+
+	if len(appData.BidToTrade) != 0 {
 		return fmt.Errorf("invalid starting")
 	}
 
@@ -111,31 +149,41 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 	}
 
 	// Check change
-	if len(fromData.Orders)+1 != len(toData.Orders) && len(fromData.Orders) != len(toData.Orders) {
+	if len(toData.Orders) < len(fromData.Orders) {
 		_logger.Error("invalid transition: the number of orders in new state is incorrect\n")
 		return fmt.Errorf("invalid transition: the number of orders in new state is incorrect")
 	}
 
 	// Check change detail
-	flag := false
-	for k, v := range toData.Orders {
-		_v, ok := fromData.Orders[k]
+	for _, v := range toData.Orders {
+		_v, ok := fromData.OrdersMapping[v.OrderID]
 		if !ok {
-			if flag {
-				_logger.Error("invalid transition: too much orders for a state transition\n")
-				return fmt.Errorf("invalid transition: too much orders for a state transition")
-			}
 			// Validate new order
 			if !v.IsValidSignature() {
 				_logger.Error("invalid transition: the new order is not valid\n")
 				return fmt.Errorf("invalid transition: the new order is not valid")
 			}
-			flag = true
 		} else {
 			// Check if the order stays the same
 			if !v.Equal(_v) {
 				_logger.Error("invalid transition: \n")
 				return fmt.Errorf("invalid transition: ")
+			}
+
+			total := new(big.Int)
+			if v.Side == constants.BID {
+				for _, trade := range toData.BidToTrade[v.OrderID] {
+					total = new(big.Int).Add(total, trade.Amount)
+				}
+			} else {
+				for _, trade := range toData.AskToTrade[v.OrderID] {
+					total = new(big.Int).Add(total, trade.Amount)
+				}
+			}
+			// _logger.Debug("total: %v\n", total)
+			// _logger.Debug("v.Amount: %v\n", v.Amount)
+			if total.Cmp(v.Amount) == 1 {
+				return fmt.Errorf("invalid transition: the amount accumulate is over the order")
 			}
 		}
 	}
@@ -156,17 +204,31 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 	return nil
 }
 
-func (a *VerifyApp) SendNewOrder(s *channel.State, order *Order) error {
+func (a *VerifyApp) SendNewOrders(s *channel.State, orders []*Order) error {
 	d, ok := s.Data.(*VerifyAppData)
 	if !ok {
 		return fmt.Errorf("invalid data type: %T", d)
 	}
 
-	d.SendNewOrder(order)
+	d.SendNewOrders(orders)
 
-	if order.OrderID == EndID {
-		s.IsFinal = true
-		s.Balances = d.computeFinalBalances(s.Balances)
+	for _, order := range orders {
+		if order.OrderID == EndID {
+			_logger.Debug("Got final order\n")
+			s.IsFinal = true
+			s.Balances = d.computeFinalBalances(s.Balances)
+		}
 	}
+
+	return nil
+}
+
+func (a *VerifyApp) SendNewTrades(s *channel.State, trades []*Trade) error {
+	d, ok := s.Data.(*VerifyAppData)
+	if !ok {
+		return fmt.Errorf("invalid data type: %T", d)
+	}
+
+	d.SendNewTrades(trades)
 	return nil
 }

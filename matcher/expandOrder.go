@@ -12,7 +12,7 @@ import (
 
 type ExpandOrder struct {
 	ShadowOrder   *ShadowOrder
-	Trades        []*Trade
+	Trades        []*app.Trade
 	OriginalOrder *app.Order
 }
 

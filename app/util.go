@@ -10,7 +10,7 @@ import (
 
 // Exist order 00000000-0000-0000-0000-000000000000
 func (d *VerifyAppData) CheckFinal() bool {
-	_, ok := d.Orders[uuid.UUID{}]
+	_, ok := d.OrdersMapping[uuid.UUID{}]
 	return ok
 }
 
@@ -18,11 +18,18 @@ func (d *VerifyAppData) computeFinalBalances(bals channel.Balances) channel.Bala
 	matcherReceivedETH := &big.Int{}
 	matcherReceivedGAV := &big.Int{}
 
-	for _, v := range d.Orders {
-		if v.Side == constants.BID {
-			matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, v.Amount)
-		} else {
-			matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, v.Amount)
+	for _, v := range d.Trades {
+		priceETH := v.Price
+		amountGVN := v.Amount
+		_, ok := d.OrdersMapping[v.BidOrder]
+		if ok {
+			matcherReceivedETH = new(big.Int).Add(matcherReceivedETH, new(big.Int).Mul(priceETH, amountGVN))
+			matcherReceivedGAV = new(big.Int).Sub(matcherReceivedGAV, amountGVN)
+		}
+		_, ok = d.OrdersMapping[v.AskOrder]
+		if ok {
+			matcherReceivedETH = new(big.Int).Sub(matcherReceivedETH, new(big.Int).Mul(priceETH, amountGVN))
+			matcherReceivedGAV = new(big.Int).Add(matcherReceivedGAV, amountGVN)
 		}
 	}
 

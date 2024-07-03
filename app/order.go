@@ -28,21 +28,18 @@ func (o *Order) Equal(_o *Order) bool {
 		o.Amount.Cmp(_o.Amount) == 0 &&
 		o.Side == _o.Side &&
 		o.Owner.Cmp(_o.Owner) == 0 &&
-		bytes.Compare(o.Signature, _o.Signature) == 0
+		bytes.Equal(o.Signature, _o.Signature)
 }
 
 func (o *Order) Clone() *Order {
-	// Create a new Order instance
 	newOrder := &Order{
-		OrderID:   o.OrderID, // UUID is a value type, so it's safe to copy directly
+		OrderID:   o.OrderID,
 		Side:      o.Side,
 		Signature: make([]byte, len(o.Signature)),
 	}
 
-	// Copy the signature slice
 	copy(newOrder.Signature, o.Signature)
 
-	// For *big.Int fields, use the Set method to copy the values
 	if o.Price != nil {
 		newOrder.Price = new(big.Int).Set(o.Price)
 	}
@@ -50,10 +47,8 @@ func (o *Order) Clone() *Order {
 		newOrder.Amount = new(big.Int).Set(o.Amount)
 	}
 
-	// Assuming wallet.Address is a struct and can be copied directly.
-	// If it contains pointer fields, you would need to implement a deep copy method for it as well.
 	if o.Owner != nil {
-		newOwner := *o.Owner // This assumes a shallow copy is sufficient for wallet.Address
+		newOwner := *o.Owner
 		newOrder.Owner = &newOwner
 	}
 

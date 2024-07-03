@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/big"
@@ -9,6 +10,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	TOKEN "github.com/NguyenHiu/lightning-exchange/contracts/generated/token"
 	"github.com/NguyenHiu/lightning-exchange/data"
 	"github.com/NguyenHiu/lightning-exchange/deploy"
 	"github.com/NguyenHiu/lightning-exchange/listener"
@@ -17,6 +19,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -129,66 +132,51 @@ func main() {
 	}
 	alice.AcceptedChannel()
 
-	{
-		// Create Order 2
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.ASK, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		// <-time.After(time.Second * 3)
+	// Ask orders
+	askOrders := []*app.Order{}
+	for price := 5; price < 10; price++ {
+		order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.ASK, bob.AppClient.EthWalletAddress())
+		if err := order.Sign(bob.PrivateKey); err != nil {
+			_logger.Error("Sign order got error, err: %v\n", err)
+		}
+		askOrders = append(askOrders, order)
+
 	}
 
-	{
-		// Create Order 2
-		order := app.NewOrder(big.NewInt(5), big.NewInt(2), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		<-time.After(time.Second * 10)
+	// Bid orders
+	bidOrders := []*app.Order{}
+	for price := 1; price < 6; price++ {
+		order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.BID, alice.AppClient.EthWalletAddress())
+		if err := order.Sign(alice.PrivateKey); err != nil {
+			_logger.Error("Sign order got error err: %v\n", err)
+		}
+		bidOrders = append(bidOrders, order)
 	}
 
-	{
-		// Create Order 2
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		<-time.After(time.Second * 3)
-	}
+	// Send orders
+	bob.SendNewOrders(askOrders)
+	alice.SendNewOrders(bidOrders)
 
 	{
-		// Create Order 2
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		<-time.After(time.Second * 3)
-	}
-
-	{
-		// Create Order 2
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		<-time.After(time.Second * 3)
-	}
-
-	{
-		// Create Order 1
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_ALICE)
-		alice.SendNewOrder(order)
-		<-time.After(time.Second * 3)
-	}
-
-	{
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, alice.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_ALICE)
-		alice.SendNewOrder(order)
-		<-time.After(time.Second * 3)
-	}
-
-	{
-		order := app.NewOrder(big.NewInt(5), big.NewInt(5), constants.BID, bob.AppClient.WalletAddressAsEthwallet())
-		order.Sign(constants.KEY_BOB)
-		bob.SendNewOrder(order)
-		<-time.After(time.Second * 3)
+		tokenInstance, err := TOKEN.NewToken(token, clientNode)
+		if err != nil {
+			log.Fatal(err)
+		}
+		matcherBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher1.Address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bobBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, bob.AppClient.WalletAddress())
+		if err != nil {
+			log.Fatal(err)
+		}
+		aliceBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, alice.AppClient.WalletAddress())
+		if err != nil {
+			log.Fatal(err)
+		}
+		_logger.Info("matcher's balance: %v\n", matcherBalance)
+		_logger.Info("bob's balance: %v\n", bobBalance)
+		_logger.Info("alice's balance: %v\n", aliceBalance)
 	}
 
 	<-time.After(time.Second * 10)
@@ -199,7 +187,7 @@ func main() {
 		if err != nil {
 			_logger.Error("create an end order is fail, err: %v\n", err)
 		}
-		alice.SendNewOrder(order)
+		alice.SendNewOrders([]*app.Order{order})
 	}
 
 	{
@@ -208,7 +196,7 @@ func main() {
 		if err != nil {
 			_logger.Error("create an end order is fail, err: %v\n", err)
 		}
-		bob.SendNewOrder(order)
+		bob.SendNewOrders([]*app.Order{order})
 	}
 
 	// Payout.
@@ -224,6 +212,28 @@ func main() {
 	matcher1.Shutdown(alice.ID)
 	bob.Shutdown()
 	matcher1.Shutdown(bob.ID)
+
+	{
+		tokenInstance, err := TOKEN.NewToken(token, clientNode)
+		if err != nil {
+			log.Fatal(err)
+		}
+		matcherBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher1.Address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bobBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, bob.AppClient.WalletAddress())
+		if err != nil {
+			log.Fatal(err)
+		}
+		aliceBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, alice.AppClient.WalletAddress())
+		if err != nil {
+			log.Fatal(err)
+		}
+		_logger.Info("matcher's balance: %v\n", matcherBalance)
+		_logger.Info("bob's balance: %v\n", bobBalance)
+		_logger.Info("alice's balance: %v\n", aliceBalance)
+	}
 
 	<-time.After(time.Second * 100)
 }

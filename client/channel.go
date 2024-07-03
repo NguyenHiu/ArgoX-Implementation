@@ -19,14 +19,28 @@ func newVerifyChannel(ch *client.Channel) *VerifyChannel {
 	return &VerifyChannel{ch: ch}
 }
 
-func (g *VerifyChannel) SendNewOrder(order *app.Order) {
+func (g *VerifyChannel) SendNewOrders(orders []*app.Order) {
 	err := g.ch.UpdateBy(context.TODO(), func(state *channel.State) error {
-		app, ok := state.App.(*app.VerifyApp)
+		_app, ok := state.App.(*app.VerifyApp)
 		if !ok {
-			return fmt.Errorf("invalid app type: %T", app)
+			return fmt.Errorf("invalid app type: %T", _app)
 		}
 
-		return app.SendNewOrder(state, order)
+		return _app.SendNewOrders(state, orders)
+	})
+	if err != nil {
+		panic(err) // We panic on error to keep the code simple.
+	}
+}
+
+func (g *VerifyChannel) SendNewTrades(trades []*app.Trade) {
+	err := g.ch.UpdateBy(context.TODO(), func(state *channel.State) error {
+		_app, ok := state.App.(*app.VerifyApp)
+		if !ok {
+			return fmt.Errorf("invalid app type: %T", _app)
+		}
+
+		return _app.SendNewTrades(state, trades)
 	})
 	if err != nil {
 		panic(err) // We panic on error to keep the code simple.

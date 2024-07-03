@@ -1,4 +1,4 @@
-package matcher
+package app
 
 import (
 	"bytes"
@@ -12,23 +12,57 @@ import (
 )
 
 type Trade struct {
+	TradeID   uuid.UUID
 	BidOrder  uuid.UUID
 	AskOrder  uuid.UUID
+	Price     *big.Int
 	Amount    *big.Int
 	Owner     common.Address
 	Signature []byte
 }
 
 func (t *Trade) Equal(_t *Trade) bool {
-	return t.BidOrder == _t.BidOrder &&
+	return t.TradeID == _t.TradeID &&
+		t.BidOrder == _t.BidOrder &&
 		t.AskOrder == _t.AskOrder &&
 		t.Amount.Cmp(_t.Amount) == 0 &&
+		t.Price.Cmp(_t.Price) == 0 &&
 		t.Owner.Cmp(_t.Owner) == 0 &&
-		bytes.Compare(t.Signature, _t.Signature) == 0
+		bytes.Equal(t.Signature, _t.Signature)
+}
+
+func (t *Trade) Clone() *Trade {
+	clonedTrade := &Trade{
+		TradeID:  t.TradeID,
+		BidOrder: t.BidOrder,
+		AskOrder: t.AskOrder,
+		Owner:    t.Owner,
+	}
+
+	if t.Amount != nil {
+		clonedTrade.Amount = new(big.Int).Set(t.Amount)
+	}
+
+	if t.Price != nil {
+		clonedTrade.Price = new(big.Int).Set(t.Price)
+	}
+
+	copy(clonedTrade.Signature, t.Signature)
+
+	return clonedTrade
 }
 
 func (t *Trade) Encode_Sign() ([]byte, error) {
 	w := new(bytes.Buffer)
+
+	// Trade ID
+	tOrder, err := t.TradeID.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	if err := binary.Write(w, binary.BigEndian, tOrder); err != nil {
+		return nil, err
+	}
 
 	// BidOrder ID
 	b, err := t.BidOrder.MarshalBinary()
@@ -45,6 +79,11 @@ func (t *Trade) Encode_Sign() ([]byte, error) {
 		return nil, err
 	}
 	if err := binary.Write(w, binary.BigEndian, s); err != nil {
+		return nil, err
+	}
+
+	// Price
+	if err := binary.Write(w, binary.BigEndian, PaddingToUint256(t.Price)); err != nil {
 		return nil, err
 	}
 
@@ -82,6 +121,15 @@ func (t *Trade) Sign(privateKey *ecdsa.PrivateKey) error {
 func (t *Trade) Encode_TransferBatching() ([]byte, error) {
 	w := new(bytes.Buffer)
 
+	// Trade ID
+	tOrder, err := t.TradeID.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	if err := binary.Write(w, binary.BigEndian, tOrder); err != nil {
+		return nil, err
+	}
+
 	// BidOrder ID
 	b, err := t.BidOrder.MarshalBinary()
 	if err != nil {
@@ -97,6 +145,11 @@ func (t *Trade) Encode_TransferBatching() ([]byte, error) {
 		return nil, err
 	}
 	if err := binary.Write(w, binary.BigEndian, s); err != nil {
+		return nil, err
+	}
+
+	// Price
+	if err := binary.Write(w, binary.BigEndian, PaddingToUint256(t.Price)); err != nil {
 		return nil, err
 	}
 
@@ -119,6 +172,11 @@ func (t *Trade) Encode_TransferBatching() ([]byte, error) {
 }
 
 func (t *Trade) Decode_TransferBatching(data *bytes.Buffer) error {
+	// Trade ID
+	if err := binary.Read(data, binary.BigEndian, &t.TradeID); err != nil {
+		return err
+	}
+
 	// BidOrder ID
 	if err := binary.Read(data, binary.BigEndian, &t.BidOrder); err != nil {
 		return err
@@ -128,6 +186,13 @@ func (t *Trade) Decode_TransferBatching(data *bytes.Buffer) error {
 	if err := binary.Read(data, binary.BigEndian, &t.AskOrder); err != nil {
 		return err
 	}
+
+	// Price
+	_price := make([]byte, 32)
+	if err := binary.Read(data, binary.BigEndian, &_price); err != nil {
+		return err
+	}
+	t.Price = new(big.Int).SetBytes(_price)
 
 	// Amount
 	_amount := make([]byte, 32)
@@ -170,4 +235,12 @@ func (t *Trade) IsValidSignature() bool {
 	}
 
 	return crypto.VerifySignature(crypto.FromECDSAPub(pubkey), hashedData.Bytes(), t.Signature[:64])
+}
+
+func (t *Trade) Encode_TransferLightning() ([]byte, error) {
+	return t.Encode_TransferBatching()
+}
+
+func (t *Trade) Decode_TransferLightning(data *bytes.Buffer) error {
+	return t.Decode_TransferBatching(data)
 }

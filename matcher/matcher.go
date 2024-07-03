@@ -50,9 +50,9 @@ type Matcher struct {
 	BidOrders         []*MatcherOrder
 	AskOrders         []*MatcherOrder
 	Orders            map[uuid.UUID]*app.Order
-	ExecutedTrade     []*Trade
-	mappingBidtoTrade map[uuid.UUID][]*Trade
-	mappingAskToTrade map[uuid.UUID][]*Trade
+	ExecutedTrade     []*app.Trade
+	mappingBidtoTrade map[uuid.UUID][]*app.Trade
+	mappingAskToTrade map[uuid.UUID][]*app.Trade
 
 	// Super Matcher & Onchain Contract
 	SuperMatcherURI string             // Super Matcher API Server
@@ -109,9 +109,9 @@ func NewMatcher(
 		BidOrders:         []*MatcherOrder{},
 		AskOrders:         []*MatcherOrder{},
 		Orders:            make(map[uuid.UUID]*app.Order),
-		ExecutedTrade:     []*Trade{},
-		mappingBidtoTrade: make(map[uuid.UUID][]*Trade),
-		mappingAskToTrade: make(map[uuid.UUID][]*Trade),
+		ExecutedTrade:     []*app.Trade{},
+		mappingBidtoTrade: make(map[uuid.UUID][]*app.Trade),
+		mappingAskToTrade: make(map[uuid.UUID][]*app.Trade),
 
 		SuperMatcherURI: superMatcherURI,
 		OnchainInstance: instance,
@@ -127,10 +127,14 @@ func NewMatcher(
 	}
 }
 
-func (m *Matcher) NewTrade(bid uuid.UUID, ask uuid.UUID, amount *big.Int) {
-	executedtrade := &Trade{
+func (m *Matcher) NewTrade(bid, ask uuid.UUID, price, amount *big.Int) *app.Trade {
+
+	id, _ := uuid.NewRandom()
+	executedtrade := &app.Trade{
+		TradeID:   id,
 		BidOrder:  bid,
 		AskOrder:  ask,
+		Price:     price,
 		Amount:    amount,
 		Owner:     m.Address,
 		Signature: []byte{},
@@ -142,6 +146,7 @@ func (m *Matcher) NewTrade(bid uuid.UUID, ask uuid.UUID, amount *big.Int) {
 	m.mappingBidtoTrade[bid] = append(m.mappingBidtoTrade[bid], executedtrade)
 	m.mappingAskToTrade[ask] = append(m.mappingAskToTrade[ask], executedtrade)
 
+	return executedtrade
 }
 
 // Create 2 channels: one for receiving orders, one for sending message
@@ -180,23 +185,25 @@ func (m *Matcher) goBatching() {
 }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
-	for order := range m.ClientConfigs[userID].AppClient.TriggerChannel {
-		_side := "bid"
-		if order.Side == constants.ASK {
-			_side = "ask"
-		}
-		_logger.Info("[%v] Receive an order: {%v, %v, %v}\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, _side)
+	for orders := range m.ClientConfigs[userID].AppClient.TriggerChannel {
+		for _, order := range orders {
+			_side := "bid"
+			if order.Side == constants.ASK {
+				_side = "ask"
+			}
+			_logger.Info("[%v] Receive an order::%v, price: %v, amount: %v, %v\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, order.Amount, _side)
 
-		m.Orders[order.OrderID] = order
-		m.addOrder(&MatcherOrder{
-			Data: &ShadowOrder{
-				Price:  order.Price,
-				Amount: order.Amount,
-				Side:   order.Side,
-				From:   order.OrderID,
-			},
-			Owner: userID,
-		})
+			m.Orders[order.OrderID] = order
+			m.addOrder(&MatcherOrder{
+				Data: &ShadowOrder{
+					Price:  order.Price,
+					Amount: order.Amount,
+					Side:   order.Side,
+					From:   order.OrderID,
+				},
+				Owner: userID,
+			})
+		}
 	}
 }
 

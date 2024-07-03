@@ -3,37 +3,49 @@ package app
 import (
 	"encoding/binary"
 	"io"
-	"sort"
 
 	"github.com/google/uuid"
 	"perun.network/go-perun/channel"
 )
 
 type VerifyAppData struct {
-	Orders map[uuid.UUID]*Order
+	Orders        []*Order
+	Trades        []*Trade
+	OrdersMapping map[uuid.UUID]*Order
+	TradesMapping map[uuid.UUID]*Trade
+	BidToTrade    map[uuid.UUID][]*Trade
+	AskToTrade    map[uuid.UUID][]*Trade
 }
 
 /**
  * Encode encodes app data ([]byte) onto an io.Writer.
+ * Format: <NO Orders> <Each Order>... <No message lists> [<No messages in each list> <Each message>]...
  */
 func (d *VerifyAppData) Encode(w io.Writer) error {
-	// No orders
+	// No Orders
 	if err := binary.Write(w, binary.BigEndian, uint8(len(d.Orders))); err != nil {
 		return err
 	}
 
-	ordersKeys := make([]uuid.UUID, 0, len(d.Orders))
-	for key := range d.Orders {
-		ordersKeys = append(ordersKeys, key)
-	}
-	sort.Slice(ordersKeys, func(i, j int) bool {
-		return ordersKeys[i].String() < ordersKeys[j].String()
-	})
-	for _, key := range ordersKeys {
-		order := d.Orders[key]
-
-		// Order
+	// Each Order
+	for _, order := range d.Orders {
 		if err := binary.Write(w, binary.BigEndian, order.Encode_TransferLightning()); err != nil {
+			return err
+		}
+	}
+
+	// No Trades
+	if err := binary.Write(w, binary.BigEndian, uint8(len(d.Trades))); err != nil {
+		return err
+	}
+
+	// Each Trades
+	for _, trade := range d.Trades {
+		data, err := trade.Encode_TransferLightning()
+		if err != nil {
+			return err
+		}
+		if err := binary.Write(w, binary.BigEndian, data); err != nil {
 			return err
 		}
 	}
@@ -41,21 +53,75 @@ func (d *VerifyAppData) Encode(w io.Writer) error {
 	return nil
 }
 
-// A required function of Channel.Data interface
-// Clone returns a deep copy of the app data.
 func (d *VerifyAppData) Clone() channel.Data {
-	_d := *d
-
-	// Deep copy of the Orders map
-	_d.Orders = make(map[uuid.UUID]*Order)
-	for key, value := range d.Orders {
-		// Assuming Order is a pointer or a simple struct that doesn't require deep copying
-		// If Order contains reference types, you would need to further clone those as well
-		_d.Orders[key] = value.Clone()
+	cloned := &VerifyAppData{
+		Orders:        make([]*Order, len(d.Orders)),
+		Trades:        make([]*Trade, len(d.Trades)),
+		OrdersMapping: make(map[uuid.UUID]*Order),
+		TradesMapping: make(map[uuid.UUID]*Trade),
+		BidToTrade:    make(map[uuid.UUID][]*Trade),
+		AskToTrade:    make(map[uuid.UUID][]*Trade),
 	}
-	return &_d
+
+	// Clone Orders
+	for i, order := range d.Orders {
+		cloned.Orders[i] = order.Clone() // Assuming Order has a Clone method
+	}
+
+	// Clone Trades
+	for i, trade := range d.Trades {
+		cloned.Trades[i] = trade.Clone() // Assuming Trade has a Clone method
+	}
+
+	// Clone OrdersMapping
+	for key, order := range d.OrdersMapping {
+		cloned.OrdersMapping[key] = order.Clone() // Assuming Order has a Clone method
+	}
+
+	// Clone TradesMapping
+	for key, trade := range d.TradesMapping {
+		cloned.TradesMapping[key] = trade.Clone() // Assuming Trade has a Clone method
+	}
+
+	// Clone BidToTrade
+	for key, trades := range d.BidToTrade {
+		clonedTrades := make([]*Trade, len(trades))
+		for i, trade := range trades {
+			clonedTrades[i] = trade.Clone() // Assuming Trade has a Clone method
+		}
+		cloned.BidToTrade[key] = clonedTrades
+	}
+
+	// Clone AskToTrade
+	for key, trades := range d.AskToTrade {
+		clonedTrades := make([]*Trade, len(trades))
+		for i, trade := range trades {
+			clonedTrades[i] = trade.Clone() // Assuming Trade has a Clone method
+		}
+		cloned.AskToTrade[key] = clonedTrades
+	}
+
+	return cloned
 }
 
-func (d *VerifyAppData) SendNewOrder(order *Order) {
-	d.Orders[order.OrderID] = order
+func (d *VerifyAppData) SendNewOrders(orders []*Order) {
+	for _, order := range orders {
+		_, ok := d.OrdersMapping[order.OrderID]
+		if !ok {
+			d.Orders = append(d.Orders, order)
+			d.OrdersMapping[order.OrderID] = order
+		}
+	}
+}
+
+func (d *VerifyAppData) SendNewTrades(trades []*Trade) {
+	for _, trade := range trades {
+		_, ok := d.TradesMapping[trade.TradeID]
+		if !ok {
+			d.Trades = append(d.Trades, trade)
+			d.TradesMapping[trade.TradeID] = trade
+			d.AskToTrade[trade.AskOrder] = append(d.AskToTrade[trade.AskOrder], trade)
+			d.BidToTrade[trade.BidOrder] = append(d.BidToTrade[trade.BidOrder], trade)
+		}
+	}
 }

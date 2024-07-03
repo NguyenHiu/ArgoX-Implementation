@@ -49,9 +49,9 @@ func (u *User) AcceptedChannel() {
 	u.VerifyChannel = u.AppClient.AcceptedChannel()
 }
 
-func (u *User) SendNewOrder(newOrder *app.Order) {
+func (u *User) SendNewOrders(newOrders []*app.Order) {
 	_logger.Info("Sending new ORDER...\n")
-	u.VerifyChannel.SendNewOrder(newOrder)
+	u.VerifyChannel.SendNewOrders(newOrders)
 }
 
 func (u *User) Settle() {

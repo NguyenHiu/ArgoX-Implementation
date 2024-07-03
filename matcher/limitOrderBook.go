@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 )
 
@@ -35,6 +36,8 @@ func (m *Matcher) matching() bool {
 	for m.canMatch() {
 		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.From.String()[:5], m.AskOrders[0].Data.From.String()[:5], m.BidOrders[0].Data.Amount)
 
+		// TODO: Send messages after matching!
+
 		minAmount := m.BidOrders[0].Data.Amount
 		if minAmount.Cmp(m.AskOrders[0].Data.Amount) == 1 {
 			minAmount = m.AskOrders[0].Data.Amount
@@ -43,7 +46,12 @@ func (m *Matcher) matching() bool {
 		m.BidOrders[0].Data.Amount = new(big.Int).Sub(m.BidOrders[0].Data.Amount, minAmount)
 		m.AskOrders[0].Data.Amount = new(big.Int).Sub(m.AskOrders[0].Data.Amount, minAmount)
 
-		m.NewTrade(m.BidOrders[0].Data.From, m.AskOrders[0].Data.From, minAmount)
+		matchPrice := new(big.Int).Div(new(big.Int).Add(m.BidOrders[0].Data.Price, m.AskOrders[0].Data.Price), big.NewInt(2))
+
+		trade := m.NewTrade(m.BidOrders[0].Data.From, m.AskOrders[0].Data.From, matchPrice, minAmount)
+
+		m.ClientConfigs[m.BidOrders[0].Owner].VerifyChannel.SendNewTrades([]*app.Trade{trade})
+		m.ClientConfigs[m.AskOrders[0].Owner].VerifyChannel.SendNewTrades([]*app.Trade{trade})
 
 		if m.BidOrders[0].Data.Amount.Cmp(new(big.Int)) == 0 {
 			m.BidOrders = m.BidOrders[1:]

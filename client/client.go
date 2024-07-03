@@ -32,7 +32,7 @@ type AppClient struct {
 	app            *App.VerifyApp
 	channels       chan *VerifyChannel
 	UseTrigger     bool
-	TriggerChannel chan *App.Order
+	TriggerChannel chan []*App.Order
 }
 
 // SetupAppClient creates a new app client.
@@ -107,7 +107,7 @@ func SetupAppClient(
 		app:            app,
 		channels:       make(chan *VerifyChannel, 1),
 		UseTrigger:     useTrigger,
-		TriggerChannel: make(chan *App.Order),
+		TriggerChannel: make(chan []*App.Order),
 	}
 
 	channel.RegisterApp(app)
@@ -134,13 +134,14 @@ func (c *AppClient) OnMyUpdate(from, to *channel.State) {
 	fromData := from.Data.(*app.VerifyAppData)
 	toData := to.Data.(*app.VerifyAppData)
 	if c.UseTrigger && len(fromData.Orders) < len(toData.Orders) {
-		for k, v := range toData.Orders {
-			_, ok := fromData.Orders[k]
+		newOrders := []*app.Order{}
+		for k, v := range toData.OrdersMapping {
+			_, ok := fromData.OrdersMapping[k]
 			if !ok {
-				c.TriggerChannel <- v
-				break
+				newOrders = append(newOrders, v)
 			}
 		}
+		c.TriggerChannel <- newOrders
 	}
 }
 

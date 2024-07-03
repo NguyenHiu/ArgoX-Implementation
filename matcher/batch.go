@@ -29,7 +29,7 @@ func (m *Matcher) NewBatch(_price, _amount *big.Int, _side bool, _orders []*Matc
 	id, _ := uuid.NewRandom()
 	orders := []*ExpandOrder{}
 	for _, order := range _orders {
-		var trades []*Trade
+		var trades []*app.Trade
 		if order.Data.Side == constants.BID {
 			trades = m.mappingBidtoTrade[order.Data.From]
 		} else {
@@ -101,7 +101,7 @@ func (b *Batch) Encode_TransferBatching(m *Matcher) ([]byte, error) {
 		}
 
 		// No. Executed Trades
-		var executedTrades []*Trade
+		var executedTrades []*app.Trade
 		if order.ShadowOrder.Side == constants.BID {
 			executedTrades = m.mappingBidtoTrade[order.ShadowOrder.From]
 		} else {
@@ -195,9 +195,9 @@ func (b *Batch) Decode_TransferBatching(_data []byte) error {
 		}
 
 		// Trades
-		executedTrades := []*Trade{}
+		executedTrades := []*app.Trade{}
 		for j := 0; j < int(_noExecutedTrades); j++ {
-			executedTrade := &Trade{}
+			executedTrade := &app.Trade{}
 			if err := executedTrade.Decode_TransferBatching(data); err != nil {
 				return err
 			}
