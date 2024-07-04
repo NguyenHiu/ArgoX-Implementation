@@ -5,13 +5,13 @@ import (
 	"log"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/logger"
+	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -28,12 +28,6 @@ type ClientConfig struct {
 	AppClient     *client.AppClient
 	VerifyChannel *client.VerifyChannel
 }
-
-type MatcherOrder struct {
-	Data  *ShadowOrder
-	Owner uuid.UUID
-}
-
 type Matcher struct {
 	// Perun's Data
 	ID            uuid.UUID
@@ -55,7 +49,6 @@ type Matcher struct {
 	mappingAskToTrade map[uuid.UUID][]*app.Trade
 
 	// Super Matcher & Onchain Contract
-	SuperMatcherURI string             // Super Matcher API Server
 	OnchainInstance *onchain.Onchain   // Onchain Contract
 	Auth            *bind.TransactOpts // authentication for writting to smart contract
 	Client          *ethclient.Client  // for getting nonce & gas price
@@ -65,20 +58,23 @@ type Matcher struct {
 
 	Batches map[uuid.UUID]*Batch // be ready for providing a valid proof of any batch
 	Mux     sync.Mutex
+
+	SuperMatcherInstance *supermatcher.SuperMatcher
 }
 
 func NewMatcher(
 	assetHolders []common.Address,
 	adj, appAddr, onchainAddr common.Address,
-	privateKey, superMatcherURI string,
+	privateKey string,
 	clientNode *ethclient.Client,
 	chainID int64,
 	gavinAddress common.Address,
+	supermatcherInstance *supermatcher.SuperMatcher,
 ) *Matcher {
 	id, _ := uuid.NewRandom()
 	verifierApp := app.NewVerifyApp(ethwallet.AsWalletAddr(appAddr))
-	stakeETH := big.NewInt(100)
-	stakeGVN := big.NewInt(100)
+	stakeETH := big.NewInt(constants.NO_ETH_IN_CHANNEL)
+	stakeGVN := big.NewInt(constants.NO_GVN_IN_CHANNEL)
 	ethwalletAssetHolders := []ethwallet.Address{}
 	for _, asset := range assetHolders {
 		ethwalletAssetHolders = append(ethwalletAssetHolders, *ethwallet.AsWalletAddr(asset))
@@ -113,7 +109,6 @@ func NewMatcher(
 		mappingBidtoTrade: make(map[uuid.UUID][]*app.Trade),
 		mappingAskToTrade: make(map[uuid.UUID][]*app.Trade),
 
-		SuperMatcherURI: superMatcherURI,
 		OnchainInstance: instance,
 		Auth:            auth,
 		Client:          clientNode,
@@ -123,7 +118,8 @@ func NewMatcher(
 
 		Batches: make(map[uuid.UUID]*Batch),
 
-		GavinAddress: gavinAddress,
+		GavinAddress:         gavinAddress,
+		SuperMatcherInstance: supermatcherInstance,
 	}
 }
 
@@ -167,26 +163,30 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	}
 	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
-	go m.goBatching()
+	// go m.goBatching()
 	return true
 }
 
-func (m *Matcher) goBatching() {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+// func (m *Matcher) goBatching() {
+// 	ticker := time.NewTicker(1 * time.Second)
+// 	defer ticker.Stop()
 
-	for range ticker.C {
-		batches := m.batching()
-		for _, batch := range batches {
-			batch.Sign(m.PrivateKey)
-			m.SendBatch(batch)
-		}
-	}
-}
+// 	for range ticker.C {
+// 		batches := m.batching()
+// 		for _, batch := range batches {
+// 			batch.Sign(m.PrivateKey)
+// 			m.SendBatch(batch)
+// 		}
+// 	}
+// }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for orders := range m.ClientConfigs[userID].AppClient.TriggerChannel {
 		for _, order := range orders {
+			if order.OrderID == app.EndID {
+				continue
+			}
+
 			_side := "bid"
 			if order.Side == constants.ASK {
 				_side = "ask"

@@ -229,13 +229,13 @@ func mintGavinToken(tokenInstance *token.Token, onchainAddr common.Address, clie
 
 	// Mint token
 	prepareNonceAndGasPrice(auth, client, addr)
-	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(2000)); err != nil {
+	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(constants.NO_MINTED_GVN_TOKEN)); err != nil {
 		log.Fatal(err)
 	}
 
 	// Approve onchain contract
 	prepareNonceAndGasPrice(auth, client, addr)
-	if _, err := tokenInstance.Approve(auth, onchainAddr, big.NewInt(2000)); err != nil {
+	if _, err := tokenInstance.Approve(auth, onchainAddr, big.NewInt(constants.NO_GVN_APPROVE)); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -254,7 +254,7 @@ func DepositETH(onchainInstance *onchain.Onchain, _client *ethclient.Client, pri
 
 	// Deposit ETH to the exchange
 	prepareNonceAndGasPrice(auth, _client, addr)
-	auth.Value = big.NewInt(100)
+	auth.Value = big.NewInt(constants.NO_ETH_DEPOSIT)
 	// auth.Value = client.EthToWei(big.NewFloat(100))
 	if _, err := onchainInstance.MyDeposit(auth); err != nil {
 		log.Fatal(err)

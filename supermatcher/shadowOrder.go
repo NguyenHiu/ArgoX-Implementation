@@ -1,4 +1,4 @@
-package matcher
+package supermatcher
 
 import (
 	"bytes"
@@ -36,6 +36,34 @@ func (o *ShadowOrder) Encode_TransferBatching() ([]byte, error) {
 	}
 
 	return data.Bytes(), nil
+}
+
+func (o *ShadowOrder) Decode_TransferBatching(data *bytes.Buffer) error {
+	// Price
+	_price := make([]byte, 32)
+	if err := binary.Read(data, binary.BigEndian, &_price); err != nil {
+		return err
+	}
+	o.Price = new(big.Int).SetBytes(_price)
+
+	// Amount
+	_amount := make([]byte, 32)
+	if err := binary.Read(data, binary.BigEndian, &_amount); err != nil {
+		return err
+	}
+	o.Amount = new(big.Int).SetBytes(_amount)
+
+	// Side
+	if err := binary.Read(data, binary.BigEndian, &o.Side); err != nil {
+		return err
+	}
+
+	// From
+	if err := binary.Read(data, binary.BigEndian, &o.From); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o *ShadowOrder) Equal(_o *ShadowOrder) bool {

@@ -15,6 +15,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type MatcherOrder struct {
+	Data  *ShadowOrder
+	Owner uuid.UUID
+}
+
 type Batch struct {
 	BatchID   uuid.UUID
 	Price     *big.Int
@@ -148,93 +153,6 @@ func (b *Batch) Encode_TransferBatching(m *Matcher) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
-func (b *Batch) Decode_TransferBatching(_data []byte) error {
-	data := bytes.NewBuffer(_data)
-
-	// Batch ID
-	if err := binary.Read(data, binary.BigEndian, &b.BatchID); err != nil {
-		return err
-	}
-
-	// Price
-	_price := make([]byte, 32)
-	if err := binary.Read(data, binary.BigEndian, &_price); err != nil {
-		return err
-	}
-	b.Price = new(big.Int).SetBytes(_price)
-
-	// Amount
-	_amount := make([]byte, 32)
-	if err := binary.Read(data, binary.BigEndian, &_amount); err != nil {
-		return err
-	}
-	b.Amount = new(big.Int).SetBytes(_amount)
-
-	// Side
-	if err := binary.Read(data, binary.BigEndian, &b.Side); err != nil {
-		return err
-	}
-
-	// Number of orders
-	var _noOrders uint8
-	if err := binary.Read(data, binary.BigEndian, &_noOrders); err != nil {
-		return err
-	}
-
-	for i := 0; i < int(_noOrders); i++ {
-		// Shadow order
-		shadowOrder := &ShadowOrder{}
-		if err := shadowOrder.Decode_TransferBatching(data); err != nil {
-			return err
-		}
-
-		// Number of executed trades
-		var _noExecutedTrades uint8
-		if err := binary.Read(data, binary.BigEndian, &_noExecutedTrades); err != nil {
-			return err
-		}
-
-		// Trades
-		executedTrades := []*app.Trade{}
-		for j := 0; j < int(_noExecutedTrades); j++ {
-			executedTrade := &app.Trade{}
-			if err := executedTrade.Decode_TransferBatching(data); err != nil {
-				return err
-			}
-			executedTrades = append(executedTrades, executedTrade)
-		}
-
-		// Original Order
-		originalOrder := &app.Order{}
-		if err := originalOrder.Decode_TransferBatching(data); err != nil {
-			return err
-		}
-
-		// Append
-		b.Orders = append(b.Orders, &ExpandOrder{
-			ShadowOrder:   shadowOrder,
-			Trades:        executedTrades,
-			OriginalOrder: originalOrder,
-		})
-	}
-
-	// Owner
-	_owner := make([]byte, 20)
-	if err := binary.Read(data, binary.BigEndian, &_owner); err != nil {
-		return err
-	}
-	b.Owner = common.Address(_owner)
-
-	// Signature
-	_signature := make([]byte, 65)
-	if err := binary.Read(data, binary.BigEndian, &_signature); err != nil {
-		return err
-	}
-	b.Signature = _signature
-
-	return nil
-}
-
 func (b *Batch) Encode_Sign() ([]byte, error) {
 	// Get encoded data of all orders
 	ordersData := new(bytes.Buffer)
@@ -306,26 +224,6 @@ func (b *Batch) Sign(_prvkey *ecdsa.PrivateKey) error {
 	return nil
 }
 
-func (b *Batch) IsValidSignature() bool {
-	encodedBatch, err := b.Encode_Sign()
-	if err != nil {
-		return false
-	}
-
-	hasheddata := crypto.Keccak256Hash(encodedBatch)
-
-	pubkey, err := crypto.SigToPub(hasheddata.Bytes(), b.Signature)
-	if err != nil {
-		return false
-	}
-
-	if crypto.PubkeyToAddress(*pubkey).Cmp(b.Owner) != 0 {
-		return false
-	}
-
-	return crypto.VerifySignature(crypto.FromECDSAPub(pubkey), hasheddata.Bytes(), b.Signature[:64])
-}
-
 // TODO: batching orders having the same price
 func (m *Matcher) batching() []*Batch {
 	batches := []*Batch{}
@@ -388,5 +286,5 @@ func (b *Batch) Equal(_b *Batch) bool {
 		b.Amount.Cmp(_b.Amount) == 0 &&
 		b.Side == _b.Side &&
 		b.Owner.Cmp(_b.Owner) == 0 &&
-		bytes.Compare(b.Signature, _b.Signature) == 0
+		bytes.Equal(b.Signature, _b.Signature)
 }

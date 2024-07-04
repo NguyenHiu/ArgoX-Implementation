@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/big"
+	"math/rand"
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
@@ -62,7 +62,7 @@ func getContracts() (common.Address, common.Address, common.Address, []common.Ad
 	return token, onchain, adj, assetHolders, appAddr
 }
 
-func StartSuperMatcher(onchainAddr common.Address, client *ethclient.Client, privateKeyHex string, port int) {
+func SetupMatcher(onchainAddr common.Address, client *ethclient.Client, privateKeyHex string, port int) *supermatcher.SuperMatcher {
 	onchainInstance, err := onchain.NewOnchain(onchainAddr, client)
 	if err != nil {
 		log.Fatal(err)
@@ -73,12 +73,7 @@ func StartSuperMatcher(onchainAddr common.Address, client *ethclient.Client, pri
 		log.Fatal(err)
 	}
 
-	go sm.SetupHTTPServer()
-
-	ticker := time.NewTicker(10 * time.Second)
-	for range ticker.C {
-		sm.Process()
-	}
+	return sm
 }
 
 // TODO: Simulation
@@ -114,12 +109,10 @@ func main() {
 	worker.Listening()
 
 	// Start Super Matcher
-	go StartSuperMatcher(_onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
-
-	superMatcherURI := fmt.Sprintf("http://127.0.0.1:%v", constants.SUPER_MATCHER_PORT)
+	sm := SetupMatcher(_onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	// Init matchers
-	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, _onchain, constants.KEY_MATCHER_1, superMatcherURI, clientNode, constants.CHAIN_ID, _token)
+	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, _onchain, constants.KEY_MATCHER_1, clientNode, constants.CHAIN_ID, _token, sm)
 	matcher1.Register()
 
 	// matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, _token)
@@ -145,16 +138,16 @@ func main() {
 
 	// Ask orders
 	askOrders := []*app.Order{}
-	for price := 5; price < 10; price++ {
+	for price := 1; price < 20; price++ {
 		{
-			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.ASK, bob.AppClient.EthWalletAddress())
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(int64(rand.Int())%10+1), constants.ASK, bob.AppClient.EthWalletAddress())
 			if err := order.Sign(bob.PrivateKey); err != nil {
 				_logger.Error("Sign order got error, err: %v\n", err)
 			}
 			askOrders = append(askOrders, order)
 		}
 		{
-			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.ASK, bob.AppClient.EthWalletAddress())
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(int64(rand.Int())%10+1), constants.ASK, bob.AppClient.EthWalletAddress())
 			if err := order.Sign(bob.PrivateKey); err != nil {
 				_logger.Error("Sign order got error, err: %v\n", err)
 			}
@@ -165,16 +158,16 @@ func main() {
 
 	// Bid orders
 	bidOrders := []*app.Order{}
-	for price := 1; price < 6; price++ {
+	for price := 15; price < 30; price++ {
 		{
-			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.BID, alice.AppClient.EthWalletAddress())
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(int64(rand.Int())%10+1), constants.BID, alice.AppClient.EthWalletAddress())
 			if err := order.Sign(alice.PrivateKey); err != nil {
 				_logger.Error("Sign order got error err: %v\n", err)
 			}
 			bidOrders = append(bidOrders, order)
 		}
 		{
-			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.BID, alice.AppClient.EthWalletAddress())
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(int64(rand.Int())%10+1), constants.BID, alice.AppClient.EthWalletAddress())
 			if err := order.Sign(alice.PrivateKey); err != nil {
 				_logger.Error("Sign order got error err: %v\n", err)
 			}
@@ -184,7 +177,7 @@ func main() {
 
 	// Send orders
 	bob.SendNewOrders(askOrders)
-	<-time.After(time.Second * 10)
+	// <-time.After(time.Second * 10)
 	alice.SendNewOrders(bidOrders)
 
 	{
@@ -209,7 +202,7 @@ func main() {
 		_logger.Info("alice's balance: %v\n", aliceBalance)
 	}
 
-	<-time.After(time.Second * 10)
+	<-time.After(time.Second * 5)
 
 	{
 		// Create Final Order

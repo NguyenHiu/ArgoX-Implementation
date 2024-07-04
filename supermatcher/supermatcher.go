@@ -3,12 +3,10 @@ package supermatcher
 import (
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/logger"
-	"github.com/NguyenHiu/lightning-exchange/matcher"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -24,10 +22,9 @@ type SuperMatcher struct {
 	Auth            *bind.TransactOpts
 	Client          *ethclient.Client
 	Address         common.Address
-	Batches         []*matcher.Batch
-	Orders          map[uuid.UUID][]*matcher.ExpandOrder
+	Batches         []*Batch
+	Orders          map[uuid.UUID][]*ExpandOrder
 
-	Port  int
 	Mutex sync.Mutex
 }
 
@@ -53,17 +50,14 @@ func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, c
 		Auth:            auth,
 		Client:          client,
 		Address:         addr,
-		Batches:         []*matcher.Batch{},
-		Orders:          make(map[uuid.UUID][]*matcher.ExpandOrder),
-		Port:            port,
+		Batches:         []*Batch{},
+		Orders:          make(map[uuid.UUID][]*ExpandOrder),
 	}
-
-	go sm.processing()
 
 	return sm, nil
 }
 
-func (sm *SuperMatcher) isExists(order *matcher.ExpandOrder) bool {
+func (sm *SuperMatcher) isExists(order *ExpandOrder) bool {
 	expandOrders, ok := sm.Orders[order.OriginalOrder.OrderID]
 	if !ok {
 		return false
@@ -76,7 +70,7 @@ func (sm *SuperMatcher) isExists(order *matcher.ExpandOrder) bool {
 	return false
 }
 
-func (sm *SuperMatcher) addOrder(order *matcher.ExpandOrder) {
+func (sm *SuperMatcher) addOrder(order *ExpandOrder) {
 	sm.Orders[order.OriginalOrder.OrderID] = append(sm.Orders[order.OriginalOrder.OrderID], order)
 }
 
@@ -97,7 +91,7 @@ func (sm *SuperMatcher) Process() {
 	// The batch is already validated when being appended to the sm.Batches
 
 	// Filter orders in the batch
-	validOrders := []*matcher.ExpandOrder{}
+	validOrders := []*ExpandOrder{}
 	for idx, order := range batch.Orders {
 		if sm.isExists(order) {
 			_logger.Debug("Order at %v has already existed\n", idx)
@@ -130,7 +124,7 @@ func (sm *SuperMatcher) Process() {
 
 }
 
-func (sm *SuperMatcher) CheckValidBatch(batch *matcher.Batch) bool {
+func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 	// 1. valid owner: owner is a matcher & the signature is valid
 	if !sm.isMatcher(batch.Owner) {
 		_logger.Debug("Invalid Matcher\n")
@@ -153,16 +147,7 @@ func (sm *SuperMatcher) CheckValidBatch(batch *matcher.Batch) bool {
 	return true
 }
 
-func (sm *SuperMatcher) processing() {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		sm.Process()
-	}
-}
-
-func (sm *SuperMatcher) AddBatch(batch *matcher.Batch) {
+func (sm *SuperMatcher) AddBatch(batch *Batch) {
 	if sm.CheckValidBatch(batch) {
 		sm.Mutex.Lock()
 		defer sm.Mutex.Unlock()

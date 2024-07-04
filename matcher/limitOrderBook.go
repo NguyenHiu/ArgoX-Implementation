@@ -19,6 +19,12 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
+	if len(m.BidOrders) >= 20 || len(m.AskOrders) >= 20 {
+		batches := m.batching()
+		for _, batch := range batches {
+			m.SendBatch(batch)
+		}
+	}
 	// _logger.Debug("\n%v", m.logDebug())
 }
 
