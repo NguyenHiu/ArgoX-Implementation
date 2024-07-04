@@ -19,6 +19,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
+	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/NguyenHiu/lightning-exchange/worker"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -82,15 +83,26 @@ func StartSuperMatcher(onchainAddr common.Address, client *ethclient.Client, pri
 
 // TODO: Simulation
 func main() {
+	clientNode, err := ethclient.Dial(constants.CHAIN_URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Deploy contracts
 	deploy.DeployContracts()
-	token, onchain, adj, assetHolders, appAddr := getContracts()
+	_token, _onchain, adj, assetHolders, appAddr := getContracts()
 
 	// Listen events from onchain contract
-	go listener.StartListener(onchain)
+	go listener.StartListener(_onchain)
+
+	// Deposit
+	onchainInstance, _ := onchain.NewOnchain(_onchain, clientNode)
+	util.DepositETH(onchainInstance, clientNode, constants.KEY_ALICE)
+	util.DepositETH(onchainInstance, clientNode, constants.KEY_BOB)
+	util.DepositETH(onchainInstance, clientNode, constants.KEY_DEPLOYER)
 
 	// Create a Reporter
-	rp, err := reporter.NewReporter(onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
+	rp, err := reporter.NewReporter(_onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
 	if err != nil {
 		_logger.Error("Create reporter error, err: %v\n", err)
 	}
@@ -98,30 +110,25 @@ func main() {
 	rp.Listening()
 	rp.Reporting()
 
-	clientNode, err := ethclient.Dial(constants.CHAIN_URL)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	worker := worker.NewWorker(onchain, constants.KEY_WORKER, clientNode)
+	worker := worker.NewWorker(_onchain, constants.KEY_WORKER, clientNode)
 	worker.Listening()
 
 	// Start Super Matcher
-	go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
+	go StartSuperMatcher(_onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	superMatcherURI := fmt.Sprintf("http://127.0.0.1:%v", constants.SUPER_MATCHER_PORT)
 
 	// Init matchers
-	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_1, superMatcherURI, clientNode, constants.CHAIN_ID, token)
+	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, _onchain, constants.KEY_MATCHER_1, superMatcherURI, clientNode, constants.CHAIN_ID, _token)
 	matcher1.Register()
 
-	// matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, token)
+	// matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, _token)
 	// matcher2.Register()
 
 	// Init Bob
 	bob := user.NewUser(constants.KEY_BOB)
 	busBob := matcher1.SetupClient(bob.ID)
-	bob.SetupClient(busBob, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, token)
+	bob.SetupClient(busBob, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, _token)
 	if ok := matcher1.OpenAppChannel(bob.ID, bob.AppClient.WireAddress()); !ok {
 		log.Fatalln("OpenAppChannel Failed")
 	}
@@ -130,7 +137,7 @@ func main() {
 	// Init Alice
 	alice := user.NewUser(constants.KEY_ALICE)
 	busAlice := matcher1.SetupClient(alice.ID)
-	alice.SetupClient(busAlice, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, token)
+	alice.SetupClient(busAlice, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, _token)
 	if ok := matcher1.OpenAppChannel(alice.ID, alice.AppClient.WireAddress()); !ok {
 		log.Fatalln("OpenAppChannel Failed")
 	}
@@ -163,7 +170,7 @@ func main() {
 	alice.SendNewOrders(bidOrders)
 
 	{
-		tokenInstance, err := TOKEN.NewToken(token, clientNode)
+		tokenInstance, err := TOKEN.NewToken(_token, clientNode)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -219,7 +226,7 @@ func main() {
 	matcher1.Shutdown(bob.ID)
 
 	{
-		tokenInstance, err := TOKEN.NewToken(token, clientNode)
+		tokenInstance, err := TOKEN.NewToken(_token, clientNode)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -77,8 +77,8 @@ func NewMatcher(
 ) *Matcher {
 	id, _ := uuid.NewRandom()
 	verifierApp := app.NewVerifyApp(ethwallet.AsWalletAddr(appAddr))
-	stakeETH := big.NewInt(1000)
-	stakeGVN := big.NewInt(1000)
+	stakeETH := big.NewInt(100)
+	stakeGVN := big.NewInt(100)
 	ethwalletAssetHolders := []ethwallet.Address{}
 	for _, asset := range assetHolders {
 		ethwalletAssetHolders = append(ethwalletAssetHolders, *ethwallet.AsWalletAddr(asset))

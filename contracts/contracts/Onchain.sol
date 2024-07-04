@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import "../openzeppelin-contracts/contracts/utils/Strings.sol";
+import "../openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract Onchain {
     struct Batch {
@@ -23,6 +24,14 @@ contract Onchain {
         bytes16 from;
         bytes32 tradeHash;
         bytes32 originalOrderHash;
+        address owner;
+    }
+
+    struct ShadowOrder {
+        uint256 price;
+        uint256 amount;
+        bool side;
+        address owner;
     }
 
     uint256 _registerFee;
@@ -30,10 +39,16 @@ contract Onchain {
     mapping(address => uint256) _matcherStakes; // matcher's address => stake amount
     mapping(bytes16 => Batch) _batchMapping; // batch's id ==> batch
     mapping(bytes16 => bytes16) _tradeMapping; // batch's id ==> id of the matched batch
+    mapping(address => uint256) _depositAmount;
+    mapping(bytes16 => ShadowOrder[]) _validBatch;
+    address _GVNToken;
+    address _owner;
 
-    constructor() {
+    constructor(address _token) {
+        _GVNToken = _token;
         _registerFee = 1 ether;
         _waitingTime = 5 seconds;
+        _owner = msg.sender;
     }
 
     /**
@@ -53,6 +68,7 @@ contract Onchain {
     event LogBytes16(bytes16);
     event LogBytes(bytes);
     event LogAddress(address);
+    event LogUint256(uint256);
     event LogRecoverError(ECDSA.RecoverError);
 
     /**
@@ -101,6 +117,10 @@ contract Onchain {
 
     function getWaitingTime() public view returns (uint256) {
         return _waitingTime;
+    }
+
+    function myDeposit() public payable {
+        _depositAmount[msg.sender] = msg.value;
     }
 
     function register(address _m) public payable {
@@ -184,6 +204,74 @@ contract Onchain {
             return;
         }
 
+        // Is first
+        if (
+            _tradeMapping[batchID] != 0x00000000000000000000000000000000 &&
+            _tradeMapping[_tradeMapping[batchID]] !=
+            0x00000000000000000000000000000000
+        ) {
+            for (uint8 i = 0; i < _ords.length; i++) {
+                ShadowOrder memory so = ShadowOrder(
+                    _batchMapping[batchID].price,
+                    _ords[i].amount,
+                    _ords[i].side,
+                    _ords[i].owner
+                );
+                _validBatch[batchID].push(so);
+            }
+            delete _tradeMapping[batchID];
+        } else {
+            // Is Second
+            ShadowOrder[] memory fsOrders = _validBatch[_tradeMapping[batchID]];
+            for (uint8 i = 0; i < fsOrders.length; i++) {
+                if (fsOrders[i].side == true) {
+                    // buy
+                    _depositAmount[fsOrders[i].owner] -=
+                        fsOrders[i].price *
+                        fsOrders[i].amount;
+                    IERC20(_GVNToken).transferFrom(
+                        _owner,
+                        fsOrders[i].owner,
+                        fsOrders[i].amount
+                    );
+                } else {
+                    // sell
+                    IERC20(_GVNToken).transferFrom(
+                        fsOrders[i].owner,
+                        _owner,
+                        fsOrders[i].amount
+                    );
+                    _depositAmount[fsOrders[i].owner] +=
+                        fsOrders[i].price *
+                        fsOrders[i].amount;
+                }
+            }
+
+            for (uint8 i = 0; i < _ords.length; i++) {
+                if (_ords[i].side == true) {
+                    // buy
+                    _depositAmount[_ords[i].owner] -=
+                        _ords[i].price *
+                        _ords[i].amount;
+                    IERC20(_GVNToken).transferFrom(
+                        _owner,
+                        _ords[i].owner,
+                        _ords[i].amount
+                    );
+                } else {
+                    // sell
+                    IERC20(_GVNToken).transferFrom(
+                        _ords[i].owner,
+                        _owner,
+                        _ords[i].amount
+                    );
+                    _depositAmount[_ords[i].owner] +=
+                        _ords[i].price *
+                        _ords[i].amount;
+                }
+            }
+        }
+
         _batchMapping[batchID].time = 0;
         emit ReceivedBatchDetails(batchID);
     }
@@ -238,5 +326,4 @@ contract Onchain {
             _sendBatch(b);
         }
     }
-
 }

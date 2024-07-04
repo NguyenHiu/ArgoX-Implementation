@@ -33,6 +33,7 @@ func StartListener(onchainAddr common.Address) {
 	go WatchLogBytes16(instance, &opts)
 	go WatchLogAddress(instance, &opts)
 	go WatchLogBytes(instance, &opts)
+	go WatchLogUint256(instance, &opts)
 	go WatchLogRecoverError(instance, &opts)
 }
 
@@ -253,6 +254,23 @@ func WatchLogBytes16(instance *onchain.Onchain, opt *bind.WatchOpts) {
 func WatchLogBytes(instance *onchain.Onchain, opt *bind.WatchOpts) {
 	logs := make(chan *onchain.OnchainLogBytes)
 	sub, err := instance.WatchLogBytes(opt, logs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sub.Unsubscribe()
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+		case vLogs := <-logs:
+			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+		}
+	}
+}
+
+func WatchLogUint256(instance *onchain.Onchain, opt *bind.WatchOpts) {
+	logs := make(chan *onchain.OnchainLogUint256)
+	sub, err := instance.WatchLogUint256(opt, logs)
 	if err != nil {
 		log.Fatal(err)
 	}

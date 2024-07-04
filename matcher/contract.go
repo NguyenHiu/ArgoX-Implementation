@@ -10,6 +10,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 )
@@ -78,6 +79,7 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 					From:              order.ShadowOrder.From,
 					TradeHash:         tradeHash,
 					OriginalOrderHash: originalOrderHash,
+					Owner:             common.Address(*order.OriginalOrder.Owner),
 				})
 			}
 

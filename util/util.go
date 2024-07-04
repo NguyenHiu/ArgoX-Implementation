@@ -102,16 +102,17 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 		log.Fatal(err)
 	}
 
-	// Mint gavin token
-	mintGavinToken(tokenInstance, client, constants.KEY_MATCHER_1)
-	mintGavinToken(tokenInstance, client, constants.KEY_MATCHER_2)
-	mintGavinToken(tokenInstance, client, constants.KEY_ALICE)
-	mintGavinToken(tokenInstance, client, constants.KEY_BOB)
-
-	onchain, _, _, err := onchain.DeployOnchain(auth, client)
+	onchain, _, _, err := onchain.DeployOnchain(auth, client, token)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Mint gavin token
+	mintGavinToken(tokenInstance, onchain, client, constants.KEY_DEPLOYER)
+	mintGavinToken(tokenInstance, onchain, client, constants.KEY_MATCHER_1)
+	mintGavinToken(tokenInstance, onchain, client, constants.KEY_MATCHER_2)
+	mintGavinToken(tokenInstance, onchain, client, constants.KEY_ALICE)
+	mintGavinToken(tokenInstance, onchain, client, constants.KEY_BOB)
 
 	return token, onchain
 }
@@ -225,14 +226,39 @@ func mintGavinToken(tokenInstance *token.Token, onchainAddr common.Address, clie
 	}
 
 	addr := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	// Mint token
 	prepareNonceAndGasPrice(auth, client, addr)
 	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(2000)); err != nil {
 		log.Fatal(err)
 	}
-	// prepareNonceAndGasPrice(auth, client, addr)
-	// if _, err := tokenInstance.Approve(auth, onchainAddr, big.NewInt(2000)); err != nil {
-	// 	log.Fatal(err)
-	// }
+
+	// Approve onchain contract
+	prepareNonceAndGasPrice(auth, client, addr)
+	if _, err := tokenInstance.Approve(auth, onchainAddr, big.NewInt(2000)); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func DepositETH(onchainInstance *onchain.Onchain, _client *ethclient.Client, privateKeyHex string) {
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(1337))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	addr := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	// Deposit ETH to the exchange
+	prepareNonceAndGasPrice(auth, _client, addr)
+	auth.Value = big.NewInt(100)
+	// auth.Value = client.EthToWei(big.NewFloat(100))
+	if _, err := onchainInstance.MyDeposit(auth); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func prepareNonceAndGasPrice(auth *bind.TransactOpts, client *ethclient.Client, address common.Address) {
