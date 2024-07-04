@@ -326,21 +326,42 @@ func (b *Batch) IsValidSignature() bool {
 	return crypto.VerifySignature(crypto.FromECDSAPub(pubkey), hasheddata.Bytes(), b.Signature[:64])
 }
 
+// TODO: batching orders having the same price
 func (m *Matcher) batching() []*Batch {
 	batches := []*Batch{}
 
-	if len(m.BidOrders) > 0 {
+	half := len(m.BidOrders) / 2
+	for len(m.BidOrders) > half {
 		ord := m.BidOrders[0]
 		m.BidOrders = m.BidOrders[1:]
-		batch := m.NewBatch(ord.Data.Price, ord.Data.Amount, ord.Data.Side, []*MatcherOrder{ord})
+		orders := []*MatcherOrder{ord}
+		price := ord.Data.Price
+		amount := ord.Data.Amount
+		for len(m.BidOrders) > 0 && m.BidOrders[0].Data.Price.Cmp(price) == 0 {
+			_ord := m.BidOrders[0]
+			m.BidOrders = m.BidOrders[1:]
+			orders = append(orders, _ord)
+			amount = new(big.Int).Add(amount, _ord.Data.Amount)
+		}
+		batch := m.NewBatch(ord.Data.Price, amount, ord.Data.Side, orders)
 		batch.Sign(m.PrivateKey)
 		batches = append(batches, batch)
 	}
 
-	if len(m.AskOrders) > 0 {
+	half = len(m.AskOrders) / 2
+	for len(m.AskOrders) > half {
 		ord := m.AskOrders[0]
 		m.AskOrders = m.AskOrders[1:]
-		batch := m.NewBatch(ord.Data.Price, ord.Data.Amount, ord.Data.Side, []*MatcherOrder{ord})
+		orders := []*MatcherOrder{ord}
+		price := ord.Data.Price
+		amount := ord.Data.Amount
+		for len(m.AskOrders) > 0 && m.AskOrders[0].Data.Price.Cmp(price) == 0 {
+			_ord := m.AskOrders[0]
+			m.AskOrders = m.AskOrders[1:]
+			orders = append(orders, _ord)
+			amount = new(big.Int).Add(amount, _ord.Data.Amount)
+		}
+		batch := m.NewBatch(ord.Data.Price, amount, ord.Data.Side, orders)
 		batch.Sign(m.PrivateKey)
 		batches = append(batches, batch)
 	}

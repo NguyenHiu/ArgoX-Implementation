@@ -146,22 +146,40 @@ func main() {
 	// Ask orders
 	askOrders := []*app.Order{}
 	for price := 5; price < 10; price++ {
-		order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.ASK, bob.AppClient.EthWalletAddress())
-		if err := order.Sign(bob.PrivateKey); err != nil {
-			_logger.Error("Sign order got error, err: %v\n", err)
+		{
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.ASK, bob.AppClient.EthWalletAddress())
+			if err := order.Sign(bob.PrivateKey); err != nil {
+				_logger.Error("Sign order got error, err: %v\n", err)
+			}
+			askOrders = append(askOrders, order)
 		}
-		askOrders = append(askOrders, order)
+		{
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.ASK, bob.AppClient.EthWalletAddress())
+			if err := order.Sign(bob.PrivateKey); err != nil {
+				_logger.Error("Sign order got error, err: %v\n", err)
+			}
+			askOrders = append(askOrders, order)
+		}
 
 	}
 
 	// Bid orders
 	bidOrders := []*app.Order{}
 	for price := 1; price < 6; price++ {
-		order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.BID, alice.AppClient.EthWalletAddress())
-		if err := order.Sign(alice.PrivateKey); err != nil {
-			_logger.Error("Sign order got error err: %v\n", err)
+		{
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.BID, alice.AppClient.EthWalletAddress())
+			if err := order.Sign(alice.PrivateKey); err != nil {
+				_logger.Error("Sign order got error err: %v\n", err)
+			}
+			bidOrders = append(bidOrders, order)
 		}
-		bidOrders = append(bidOrders, order)
+		{
+			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(5), constants.BID, alice.AppClient.EthWalletAddress())
+			if err := order.Sign(alice.PrivateKey); err != nil {
+				_logger.Error("Sign order got error err: %v\n", err)
+			}
+			bidOrders = append(bidOrders, order)
+		}
 	}
 
 	// Send orders
