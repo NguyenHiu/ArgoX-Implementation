@@ -44,7 +44,6 @@ func (r *Reporter) reporting() {
 }
 
 func (r *Reporter) Listening() {
-	go r.WatchPartialMatch()
 	go r.WatchFullfilMatch()
 	go r.WatchReceivedBatchDetails()
 	go r.WatchPunishMatcher()
@@ -58,23 +57,6 @@ func getWaitingTime(instance *onchain.Onchain) *big.Int {
 		return nil
 	}
 	return waitingTime
-}
-
-func (r *Reporter) WatchPartialMatch() {
-	logs := make(chan *onchain.OnchainPartialMatch)
-	sub, err := r.OnchainInstance.WatchPartialMatch(r.WatchOpts, logs)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sub.Unsubscribe()
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
-		// case vLogs := <-logs:
-		case <-logs:
-		}
-	}
 }
 
 func (r *Reporter) WatchFullfilMatch() {

@@ -3,7 +3,6 @@ package listener
 import (
 	"context"
 	"log"
-	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
@@ -21,7 +20,6 @@ func StartListener(onchainAddr common.Address) {
 	instance, _ := onchain.NewOnchain(onchainAddr, client)
 
 	opts := bind.WatchOpts{Context: context.Background()}
-	go WatchPartialMatch(instance, &opts)
 	go WatchFullfilMatch(instance, &opts)
 	go WatchReceivedBatchDetails(instance, &opts)
 	go WatchAcceptBatch(instance, &opts)
@@ -36,24 +34,6 @@ func StartListener(onchainAddr common.Address) {
 	go WatchLogAddress(instance, &opts)
 	go WatchLogBytes(instance, &opts)
 	go WatchLogRecoverError(instance, &opts)
-}
-
-func WatchPartialMatch(instance *onchain.Onchain, opt *bind.WatchOpts) {
-	logs := make(chan *onchain.OnchainPartialMatch)
-	sub, err := instance.WatchPartialMatch(opt, logs)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sub.Unsubscribe()
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
-		case vLogs := <-logs:
-			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Partial] Batch::%v\n", id.String())
-		}
-	}
 }
 
 func WatchFullfilMatch(instance *onchain.Onchain, opt *bind.WatchOpts) {
@@ -304,48 +284,48 @@ func WatchLogRecoverError(instance *onchain.Onchain, opt *bind.WatchOpts) {
 	}
 }
 
-func LogOrderBookOverview(instance *onchain.Onchain) {
-	bidBatches, _ := instance.GetBidOrders(&bind.CallOpts{Context: context.Background()})
-	askBatches, _ := instance.GetAskOrders(&bind.CallOpts{Context: context.Background()})
-	zero := &big.Int{}
-	s := ""
-	price := big.NewInt(0)
-	amount := big.NewInt(0)
+// func LogOrderBookOverview(instance *onchain.Onchain) {
+// 	bidBatches, _ := instance.GetBidOrders(&bind.CallOpts{Context: context.Background()})
+// 	askBatches, _ := instance.GetAskOrders(&bind.CallOpts{Context: context.Background()})
+// 	zero := &big.Int{}
+// 	s := ""
+// 	price := big.NewInt(0)
+// 	amount := big.NewInt(0)
 
-	s += "(Ask)\n"
-	for i := len(askBatches) - 1; i >= 0; i-- {
-		if price.Cmp(zero) == 0 {
-			price = askBatches[i].Price
-			amount = askBatches[i].Amount
-		} else if price.Cmp(askBatches[i].Price) == 0 {
-			amount = new(big.Int).Add(amount, askBatches[i].Amount)
-		} else {
-			s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-			price = zero
-		}
-	}
-	if price.Cmp(zero) != 0 {
-		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-		price = zero
-	}
+// 	s += "(Ask)\n"
+// 	for i := len(askBatches) - 1; i >= 0; i-- {
+// 		if price.Cmp(zero) == 0 {
+// 			price = askBatches[i].Price
+// 			amount = askBatches[i].Amount
+// 		} else if price.Cmp(askBatches[i].Price) == 0 {
+// 			amount = new(big.Int).Add(amount, askBatches[i].Amount)
+// 		} else {
+// 			s += "\t" + price.String() + ";\t" + amount.String() + "\n"
+// 			price = zero
+// 		}
+// 	}
+// 	if price.Cmp(zero) != 0 {
+// 		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
+// 		price = zero
+// 	}
 
-	s += "\t-----------------------\n"
+// 	s += "\t-----------------------\n"
 
-	s += "(Bid)\n"
-	for _, batch := range bidBatches {
-		if price.Cmp(zero) == 0 {
-			price = batch.Price
-			amount = batch.Amount
-		} else if price.Cmp(batch.Price) == 0 {
-			amount = new(big.Int).Add(amount, batch.Amount)
-		} else {
-			s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-			price = zero
-		}
-	}
-	if price.Cmp(zero) != 0 {
-		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-	}
+// 	s += "(Bid)\n"
+// 	for _, batch := range bidBatches {
+// 		if price.Cmp(zero) == 0 {
+// 			price = batch.Price
+// 			amount = batch.Amount
+// 		} else if price.Cmp(batch.Price) == 0 {
+// 			amount = new(big.Int).Add(amount, batch.Amount)
+// 		} else {
+// 			s += "\t" + price.String() + ";\t" + amount.String() + "\n"
+// 			price = zero
+// 		}
+// 	}
+// 	if price.Cmp(zero) != 0 {
+// 		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
+// 	}
 
-	_logger.Debug("Overview:\n%v\n", s)
-}
+// 	_logger.Debug("Overview:\n%v\n", s)
+// }

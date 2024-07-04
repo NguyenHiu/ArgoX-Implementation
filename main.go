@@ -19,6 +19,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
+	"github.com/NguyenHiu/lightning-exchange/worker"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -102,6 +103,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	worker := worker.NewWorker(onchain, constants.KEY_WORKER, clientNode)
+	worker.Listening()
+
 	// Start Super Matcher
 	go StartSuperMatcher(onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
@@ -155,6 +159,7 @@ func main() {
 
 	// Send orders
 	bob.SendNewOrders(askOrders)
+	<-time.After(time.Second * 10)
 	alice.SendNewOrders(bidOrders)
 
 	{

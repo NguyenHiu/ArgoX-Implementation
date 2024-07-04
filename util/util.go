@@ -214,7 +214,7 @@ func PaddingToUint256(num int64) []byte {
 	return append(make([]byte, 32-len(bigInt.Bytes())), bigInt.Bytes()...)
 }
 
-func mintGavinToken(tokenInstance *token.Token, client *ethclient.Client, privateKeyHex string) {
+func mintGavinToken(tokenInstance *token.Token, onchainAddr common.Address, client *ethclient.Client, privateKeyHex string) {
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		log.Fatal(err)
@@ -229,7 +229,10 @@ func mintGavinToken(tokenInstance *token.Token, client *ethclient.Client, privat
 	if _, err = tokenInstance.Mint(auth, addr, big.NewInt(2000)); err != nil {
 		log.Fatal(err)
 	}
-
+	// prepareNonceAndGasPrice(auth, client, addr)
+	// if _, err := tokenInstance.Approve(auth, onchainAddr, big.NewInt(2000)); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 
 func prepareNonceAndGasPrice(auth *bind.TransactOpts, client *ethclient.Client, address common.Address) {
