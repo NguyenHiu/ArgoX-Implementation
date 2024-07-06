@@ -64,15 +64,18 @@ func (w *Worker) matching() {
 		return
 	}
 
+	// w.log()
+
+	w.Mux.Lock()
+	defer w.Mux.Unlock()
+
 	i, j := 0, 0
 	for ; w.canMatch(i, j); i++ {
 		for ; w.canMatch(i, j); j++ {
 			if w.BidBatches[i].Amount == w.AskBatches[j].Amount {
 				w.SubmitMatchEvent(w.BidBatches[i].BatchID, w.AskBatches[j].BatchID)
-				w.Mux.Lock()
 				w.BidBatches = append(w.BidBatches[:i], w.BidBatches[i+1:]...)
-				w.AskBatches = append(w.AskBatches[:i], w.AskBatches[i+1:]...)
-				w.Mux.Unlock()
+				w.AskBatches = append(w.AskBatches[:j], w.AskBatches[j+1:]...)
 			}
 		}
 		j = 0
@@ -84,4 +87,16 @@ func (w *Worker) canMatch(i, j int) bool {
 		return false
 	}
 	return w.BidBatches[i].Price >= w.AskBatches[j].Price
+}
+
+func (w *Worker) log() {
+	_logger.Debug("======ASK===================================\n")
+	for _, batch := range w.AskBatches {
+		_logger.Debug("\t%v - %v\n", batch.Price, batch.Amount)
+	}
+	_logger.Debug("======BID===================================\n")
+	for _, batch := range w.BidBatches {
+		_logger.Debug("\t%v - %v\n", batch.Price, batch.Amount)
+	}
+	_logger.Debug("\n")
 }

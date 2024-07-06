@@ -111,12 +111,9 @@ func main() {
 	// Start Super Matcher
 	sm := SetupMatcher(_onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
-	// Init matchers
+	// Init matcher 1
 	matcher1 := matcher.NewMatcher(assetHolders, adj, appAddr, _onchain, constants.KEY_MATCHER_1, clientNode, constants.CHAIN_ID, _token, sm)
 	matcher1.Register()
-
-	// matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, onchain, constants.KEY_MATCHER_2, superMatcherURI, clientNode, constants.CHAIN_ID, _token)
-	// matcher2.Register()
 
 	// Init Bob
 	bob := user.NewUser(constants.KEY_BOB)
@@ -127,11 +124,15 @@ func main() {
 	}
 	bob.AcceptedChannel()
 
+	// Init matcher 2
+	matcher2 := matcher.NewMatcher(assetHolders, adj, appAddr, _onchain, constants.KEY_MATCHER_2, clientNode, constants.CHAIN_ID, _token, sm)
+	matcher2.Register()
+
 	// Init Alice
 	alice := user.NewUser(constants.KEY_ALICE)
-	busAlice := matcher1.SetupClient(alice.ID)
-	alice.SetupClient(busAlice, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, _token)
-	if ok := matcher1.OpenAppChannel(alice.ID, alice.AppClient.WireAddress()); !ok {
+	busAlice := matcher2.SetupClient(alice.ID)
+	alice.SetupClient(busAlice, constants.CHAIN_URL, matcher2.Adjudicator, matcher2.AssetHolders, matcher2.App, matcher2.Stakes, _token)
+	if ok := matcher2.OpenAppChannel(alice.ID, alice.AppClient.WireAddress()); !ok {
 		log.Fatalln("OpenAppChannel Failed")
 	}
 	alice.AcceptedChannel()
@@ -158,7 +159,7 @@ func main() {
 
 	// Bid orders
 	bidOrders := []*app.Order{}
-	for price := 15; price < 30; price++ {
+	for price := 15; price < 40; price++ {
 		{
 			order := app.NewOrder(big.NewInt(int64(price)), big.NewInt(int64(rand.Int())%10+1), constants.BID, alice.AppClient.EthWalletAddress())
 			if err := order.Sign(alice.PrivateKey); err != nil {
@@ -177,7 +178,7 @@ func main() {
 
 	// Send orders
 	bob.SendNewOrders(askOrders)
-	// <-time.After(time.Second * 10)
+	// <-time.After(time.Second * 5)
 	alice.SendNewOrders(bidOrders)
 
 	{
@@ -185,7 +186,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		matcherBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher1.Address)
+		matcher1Balance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher1.Address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		matcher2Balance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher2.Address)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -197,7 +202,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		_logger.Info("matcher's balance: %v\n", matcherBalance)
+		_logger.Info("matcher 1's balance: %v\n", matcher1Balance)
+		_logger.Info("matcher 2's balance: %v\n", matcher2Balance)
 		_logger.Info("bob's balance: %v\n", bobBalance)
 		_logger.Info("alice's balance: %v\n", aliceBalance)
 	}
@@ -225,14 +231,14 @@ func main() {
 	// Payout.
 	_logger.Info("Settle\n")
 	alice.Settle()
-	matcher1.Settle(alice.ID)
+	matcher2.Settle(alice.ID)
 	bob.Settle()
 	matcher1.Settle(bob.ID)
 
 	// Cleanup.
 	_logger.Info("Shutdown\n")
 	alice.Shutdown()
-	matcher1.Shutdown(alice.ID)
+	matcher2.Shutdown(alice.ID)
 	bob.Shutdown()
 	matcher1.Shutdown(bob.ID)
 
@@ -241,7 +247,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		matcherBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher1.Address)
+		matcher1Balance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher1.Address)
+		if err != nil {
+			log.Fatal(err)
+		}
+		matcher2Balance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, matcher2.Address)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -253,7 +263,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		_logger.Info("matcher's balance: %v\n", matcherBalance)
+		_logger.Info("matcher 1's balance: %v\n", matcher1Balance)
+		_logger.Info("matcher 2's balance: %v\n", matcher2Balance)
 		_logger.Info("bob's balance: %v\n", bobBalance)
 		_logger.Info("alice's balance: %v\n", aliceBalance)
 	}

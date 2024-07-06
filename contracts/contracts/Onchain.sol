@@ -205,11 +205,7 @@ contract Onchain {
         }
 
         // Is first
-        if (
-            _tradeMapping[batchID] != 0x00000000000000000000000000000000 &&
-            _tradeMapping[_tradeMapping[batchID]] !=
-            0x00000000000000000000000000000000
-        ) {
+        if (_validBatch[_tradeMapping[batchID]].length == 0) {
             for (uint8 i = 0; i < _ords.length; i++) {
                 ShadowOrder memory so = ShadowOrder(
                     _batchMapping[batchID].price,
@@ -219,12 +215,11 @@ contract Onchain {
                 );
                 _validBatch[batchID].push(so);
             }
-            delete _tradeMapping[batchID];
         } else {
             // Is Second
             ShadowOrder[] memory fsOrders = _validBatch[_tradeMapping[batchID]];
-            for (uint8 i = 0; i < fsOrders.length; i++) {
-                if (fsOrders[i].side == true) {
+            if (fsOrders.length > 0 && fsOrders[0].side == true) {
+                for (uint8 i = 0; i < fsOrders.length; i++) {
                     // buy
                     _depositAmount[fsOrders[i].owner] -=
                         fsOrders[i].price *
@@ -234,7 +229,9 @@ contract Onchain {
                         fsOrders[i].owner,
                         fsOrders[i].amount
                     );
-                } else {
+                }
+            } else {
+                for (uint8 i = 0; i < fsOrders.length; i++) {
                     // sell
                     IERC20(_GVNToken).transferFrom(
                         fsOrders[i].owner,
@@ -247,8 +244,8 @@ contract Onchain {
                 }
             }
 
-            for (uint8 i = 0; i < _ords.length; i++) {
-                if (_ords[i].side == true) {
+            if (_ords.length > 0 && _ords[0].side == true) {
+                for (uint8 i = 0; i < _ords.length; i++) {
                     // buy
                     _depositAmount[_ords[i].owner] -=
                         _ords[i].price *
@@ -258,7 +255,9 @@ contract Onchain {
                         _ords[i].owner,
                         _ords[i].amount
                     );
-                } else {
+                }
+            } else {
+                for (uint8 i = 0; i < _ords.length; i++) {
                     // sell
                     IERC20(_GVNToken).transferFrom(
                         _ords[i].owner,
@@ -300,7 +299,9 @@ contract Onchain {
         Batch memory bidBatch = _batchMapping[bidBatchID];
         Batch memory askBatch = _batchMapping[askBatchID];
         require(bidBatch.batchID == bidBatchID, "bid batch doesn't exsit");
+        require(bidBatch.time == 0, "bid batch is pending");
         require(askBatch.batchID == askBatchID, "ask batch odesn't exsit");
+        require(askBatch.time == 0, "ask batch is pending");
 
         // Fulfill Match
         if (

@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/app"
@@ -19,13 +18,27 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
-	if len(m.BidOrders) >= 20 || len(m.AskOrders) >= 20 {
+	if len(m.BidOrders) >= 10 || len(m.AskOrders) >= 10 {
 		batches := m.batching()
 		for _, batch := range batches {
 			m.SendBatch(batch)
 		}
 	}
-	// _logger.Debug("\n%v", m.logDebug())
+}
+
+func (m *Matcher) Log() {
+	_logger.Debug("-----------------------------\n")
+	_logger.Debug("Local Order Book:\n")
+	_logger.Debug("BID:\n")
+	for _, order := range m.BidOrders {
+		_logger.Debug("\t[%v] %v - %v\n", order.Data.From.String()[:5], order.Data.Price, order.Data.Amount)
+	}
+	_logger.Debug("---------------\n")
+	_logger.Debug("ASK:\n")
+	for _, order := range m.AskOrders {
+		_logger.Debug("\t[%v] %v - %v\n", order.Data.From.String()[:5], order.Data.Price, order.Data.Amount)
+	}
+	_logger.Debug("-----------------------------\n")
 }
 
 func (m *Matcher) matching() bool {
@@ -40,10 +53,9 @@ func (m *Matcher) matching() bool {
 
 	// naive matching
 	for m.canMatch() {
-		_logger.Debug("Matching (%v..., %v..., %v)\n", m.BidOrders[0].Data.From.String()[:5], m.AskOrders[0].Data.From.String()[:5], m.BidOrders[0].Data.Amount)
+		_logger.Debug("Matching: (%v..., %v), (%v..., %v)\n", m.BidOrders[0].Data.From.String()[:5], m.BidOrders[0].Data.Amount, m.AskOrders[0].Data.From.String()[:5], m.AskOrders[0].Data.Amount)
 
 		// TODO: Send messages after matching!
-
 		minAmount := m.BidOrders[0].Data.Amount
 		if minAmount.Cmp(m.AskOrders[0].Data.Amount) == 1 {
 			minAmount = m.AskOrders[0].Data.Amount
@@ -101,18 +113,4 @@ func addAccordingTheOrder(order *MatcherOrder, orders []*MatcherOrder) []*Matche
 	}
 
 	return orders
-}
-
-func (m *Matcher) logDebug() string {
-	str := ""
-	str += "# ASK:\n"
-	for _, order := range m.AskOrders {
-		str += fmt.Sprintf("\t%v - %v\n", order.Data.Price, order.Data.Amount)
-	}
-	str += "========================\n"
-	str += "# BID:\n"
-	for _, order := range m.BidOrders {
-		str += fmt.Sprintf("\t%v - %v\n", order.Data.Price, order.Data.Amount)
-	}
-	return str
 }

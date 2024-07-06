@@ -228,8 +228,8 @@ func (b *Batch) Sign(_prvkey *ecdsa.PrivateKey) error {
 func (m *Matcher) batching() []*Batch {
 	batches := []*Batch{}
 
-	half := len(m.BidOrders) / 2
-	for len(m.BidOrders) > half {
+	threshold := len(m.BidOrders) / 4
+	for len(m.BidOrders) > threshold {
 		ord := m.BidOrders[0]
 		m.BidOrders = m.BidOrders[1:]
 		orders := []*MatcherOrder{ord}
@@ -246,8 +246,8 @@ func (m *Matcher) batching() []*Batch {
 		batches = append(batches, batch)
 	}
 
-	half = len(m.AskOrders) / 2
-	for len(m.AskOrders) > half {
+	threshold = len(m.AskOrders) / 4
+	for len(m.AskOrders) > threshold {
 		ord := m.AskOrders[0]
 		m.AskOrders = m.AskOrders[1:]
 		orders := []*MatcherOrder{ord}
