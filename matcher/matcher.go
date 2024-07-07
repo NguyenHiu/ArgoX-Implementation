@@ -191,7 +191,7 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			if order.Side == constants.ASK {
 				_side = "ask"
 			}
-			_logger.Info("[%v] Receive an order::%v, price: %v, amount: %v, %v\n", m.ID.String()[:6], order.OrderID.String()[:6], order.Price, order.Amount, _side)
+			_logger.Info("[%v::%vv] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
 
 			m.Orders[order.OrderID] = order
 			m.addOrder(&MatcherOrder{

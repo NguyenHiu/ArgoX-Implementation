@@ -20,15 +20,19 @@ type User struct {
 	PrivateKey    string
 	AppClient     *client.AppClient
 	VerifyChannel *client.VerifyChannel
+	Address       common.Address
 }
 
 func NewUser(privateKey string) *User {
 	uuid, _ := uuid.NewRandom()
+	privKey, _ := crypto.HexToECDSA(privateKey)
+
 	return &User{
 		ID:            uuid,
 		PrivateKey:    privateKey,
 		AppClient:     &client.AppClient{},
 		VerifyChannel: &client.VerifyChannel{},
+		Address:       crypto.PubkeyToAddress(privKey.PublicKey),
 	}
 }
 
@@ -50,7 +54,7 @@ func (u *User) AcceptedChannel() {
 }
 
 func (u *User) SendNewOrders(newOrders []*app.Order) {
-	_logger.Info("Sending new ORDER...\n")
+	_logger.Info("[%v] Sending new ORDER...\n", u.Address.String()[:5])
 	u.VerifyChannel.SendNewOrders(newOrders)
 }
 

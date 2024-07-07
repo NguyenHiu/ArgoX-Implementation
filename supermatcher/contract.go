@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/client"
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,7 +15,11 @@ import (
 func (sm *SuperMatcher) SendBatch(batch *Batch) {
 	sm.Mutex.Lock()
 
-	_logger.Info("Sends batch::%v to onchain\n", batch.BatchID.String())
+	_side := "bid"
+	if batch.Side == constants.ASK {
+		_side = "ask"
+	}
+	_logger.Info("Sends batch::%v::%v::%v::%v to onchain\n", batch.BatchID.String()[:5], batch.Owner.String()[:5], batch.Amount, _side)
 
 	sm.prepareNonceAndGasPrice(0, 900000)
 	_signature := util.CorrectSignToOnchain(batch.Signature)

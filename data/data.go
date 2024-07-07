@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const DATA_PATH = "data/data.json"
+const DATA_PATH = "./data/data.json"
 
 func loadData() (map[string]string, error) {
 	file, err := os.Open(DATA_PATH)

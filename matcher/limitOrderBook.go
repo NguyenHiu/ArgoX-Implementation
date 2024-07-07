@@ -69,6 +69,7 @@ func (m *Matcher) matching() bool {
 		trade := m.NewTrade(m.BidOrders[0].Data.From, m.AskOrders[0].Data.From, matchPrice, minAmount)
 
 		m.ClientConfigs[m.BidOrders[0].Owner].VerifyChannel.SendNewTrades([]*app.Trade{trade})
+		// _logger.Debug("m.AskOrders[0].Owner: %v\n", m.AskOrders[0].Owner)
 		m.ClientConfigs[m.AskOrders[0].Owner].VerifyChannel.SendNewTrades([]*app.Trade{trade})
 
 		if m.BidOrders[0].Data.Amount.Cmp(new(big.Int)) == 0 {
