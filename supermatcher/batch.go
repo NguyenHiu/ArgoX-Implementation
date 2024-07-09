@@ -8,7 +8,7 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
+	"github.com/NguyenHiu/lightning-exchange/tradeApp"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
@@ -76,9 +76,9 @@ func (b *Batch) Decode_TransferBatching(_data []byte) error {
 		}
 
 		// Trades
-		executedTrades := []*app.Trade{}
+		executedTrades := []*tradeApp.Trade{}
 		for j := 0; j < int(_noExecutedTrades); j++ {
-			executedTrade := &app.Trade{}
+			executedTrade := &tradeApp.Trade{}
 			if err := executedTrade.Decode_TransferBatching(data); err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func (b *Batch) Decode_TransferBatching(_data []byte) error {
 		}
 
 		// Original Order
-		originalOrder := &app.Order{}
+		originalOrder := &tradeApp.Order{}
 		if err := originalOrder.Decode_TransferBatching(data); err != nil {
 			return err
 		}

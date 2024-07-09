@@ -5,8 +5,8 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
+	"github.com/NguyenHiu/lightning-exchange/tradeClient"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -53,6 +53,6 @@ func (sm *SuperMatcher) prepareNonceAndGasPrice(value float64, gasLimit int) {
 
 	sm.Auth.Nonce = big.NewInt(int64(nonce))
 	sm.Auth.GasPrice = gasPrice
-	sm.Auth.Value = client.EthToWei(big.NewFloat(float64(value)))
+	sm.Auth.Value = tradeClient.EthToWei(big.NewFloat(float64(value)))
 	sm.Auth.GasLimit = uint64(gasLimit)
 }

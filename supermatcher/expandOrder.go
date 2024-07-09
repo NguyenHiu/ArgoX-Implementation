@@ -5,15 +5,15 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
+	"github.com/NguyenHiu/lightning-exchange/tradeApp"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type ExpandOrder struct {
 	ShadowOrder   *ShadowOrder
-	Trades        []*app.Trade
-	OriginalOrder *app.Order
+	Trades        []*tradeApp.Trade
+	OriginalOrder *tradeApp.Order
 }
 
 func (e *ExpandOrder) Equal(_e *ExpandOrder) bool {

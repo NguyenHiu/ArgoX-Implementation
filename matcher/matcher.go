@@ -6,27 +6,31 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/logger"
+	"github.com/NguyenHiu/lightning-exchange/orderApp"
+	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
-	"github.com/NguyenHiu/lightning-exchange/util"
+	"github.com/NguyenHiu/lightning-exchange/tradeApp"
+	"github.com/NguyenHiu/lightning-exchange/tradeClient"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
-	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	"perun.network/go-perun/wire"
+
+	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 )
 
 var _logger = logger.NewLogger("Matcher", logger.Green, logger.None)
 
 type ClientConfig struct {
-	AppClient     *client.AppClient
-	VerifyChannel *client.VerifyChannel
+	TradeAppClient *tradeClient.TradeAppClient
+	TradeChannel   *tradeClient.TradeChannel
+	OrderAppClient *orderClient.OrderAppClient
+	OrderChannel   *orderClient.OrderChannel
 }
 type Matcher struct {
 	// Perun's Data
@@ -34,7 +38,8 @@ type Matcher struct {
 	ClientConfigs map[uuid.UUID]*ClientConfig // store traders' channel
 	Adjudicator   common.Address
 	AssetHolders  []ethwallet.Address
-	App           *app.VerifyApp
+	OrderApp      *orderApp.OrderApp
+	TradeApp      *tradeApp.TradeApp
 	Stakes        []*big.Int
 
 	// Gavin Address
@@ -43,10 +48,10 @@ type Matcher struct {
 	// Order Book
 	BidOrders         []*MatcherOrder
 	AskOrders         []*MatcherOrder
-	Orders            map[uuid.UUID]*app.Order
-	ExecutedTrade     []*app.Trade
-	mappingBidtoTrade map[uuid.UUID][]*app.Trade
-	mappingAskToTrade map[uuid.UUID][]*app.Trade
+	Orders            map[uuid.UUID]*tradeApp.Order
+	ExecutedTrade     []*tradeApp.Trade
+	mappingBidtoTrade map[uuid.UUID][]*tradeApp.Trade
+	mappingAskToTrade map[uuid.UUID][]*tradeApp.Trade
 
 	// Super Matcher & Onchain Contract
 	OnchainInstance *onchain.Onchain   // Onchain Contract
@@ -72,7 +77,8 @@ func NewMatcher(
 	supermatcherInstance *supermatcher.SuperMatcher,
 ) *Matcher {
 	id, _ := uuid.NewRandom()
-	verifierApp := app.NewVerifyApp(ethwallet.AsWalletAddr(appAddr))
+	_orderApp := orderApp.NewOrderApp(ethwallet.AsWalletAddr(appAddr))
+	_tradeApp := tradeApp.NewTradeApp(ethwallet.AsWalletAddr(appAddr))
 	stakeETH := big.NewInt(constants.NO_ETH_IN_CHANNEL)
 	stakeGVN := big.NewInt(constants.NO_GVN_IN_CHANNEL)
 	ethwalletAssetHolders := []ethwallet.Address{}
@@ -99,15 +105,16 @@ func NewMatcher(
 		ClientConfigs: make(map[uuid.UUID]*ClientConfig),
 		Adjudicator:   adj,
 		AssetHolders:  ethwalletAssetHolders,
-		App:           verifierApp,
+		OrderApp:      _orderApp,
+		TradeApp:      _tradeApp,
 		Stakes:        []*big.Int{stakeETH, stakeGVN},
 
 		BidOrders:         []*MatcherOrder{},
 		AskOrders:         []*MatcherOrder{},
-		Orders:            make(map[uuid.UUID]*app.Order),
-		ExecutedTrade:     []*app.Trade{},
-		mappingBidtoTrade: make(map[uuid.UUID][]*app.Trade),
-		mappingAskToTrade: make(map[uuid.UUID][]*app.Trade),
+		Orders:            make(map[uuid.UUID]*tradeApp.Order),
+		ExecutedTrade:     []*tradeApp.Trade{},
+		mappingBidtoTrade: make(map[uuid.UUID][]*tradeApp.Trade),
+		mappingAskToTrade: make(map[uuid.UUID][]*tradeApp.Trade),
 
 		OnchainInstance: instance,
 		Auth:            auth,
@@ -123,10 +130,10 @@ func NewMatcher(
 	}
 }
 
-func (m *Matcher) NewTrade(bid, ask uuid.UUID, price, amount *big.Int) *app.Trade {
+func (m *Matcher) NewTrade(bid, ask uuid.UUID, price, amount *big.Int) *tradeApp.Trade {
 
 	id, _ := uuid.NewRandom()
-	executedtrade := &app.Trade{
+	executedtrade := &tradeApp.Trade{
 		TradeID:   id,
 		BidOrder:  bid,
 		AskOrder:  ask,
@@ -146,14 +153,18 @@ func (m *Matcher) NewTrade(bid, ask uuid.UUID, price, amount *big.Int) *app.Trad
 }
 
 // Create 2 channels: one for receiving orders, one for sending message
-func (m *Matcher) SetupClient(userID uuid.UUID) wire.Bus {
-	bus := wire.NewLocalBus()
-	appClient := util.SetupClient(bus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.App, m.Stakes, true, m.GavinAddress)
+func (m *Matcher) SetupClient(userID uuid.UUID) (wire.Bus, wire.Bus) {
+	orderBus := wire.NewLocalBus()
+	tradeBus := wire.NewLocalBus()
+	orderAppClient := orderClient.SetupClient(orderBus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.OrderApp, m.Stakes, m.GavinAddress)
+	tradeAppClient := tradeClient.SetupClient(tradeBus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.TradeApp, m.Stakes, m.GavinAddress)
 	m.ClientConfigs[userID] = &ClientConfig{
-		AppClient:     appClient,
-		VerifyChannel: &client.VerifyChannel{},
+		TradeAppClient: tradeAppClient,
+		TradeChannel:   &tradeClient.TradeChannel{},
+		OrderAppClient: orderAppClient,
+		OrderChannel:   &orderClient.OrderChannel{},
 	}
-	return bus
+	return orderBus, tradeBus
 }
 
 func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
@@ -161,7 +172,8 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	if !ok {
 		return false
 	}
-	m.ClientConfigs[userID].VerifyChannel = user.AppClient.OpenAppChannel(userPeer)
+	m.ClientConfigs[userID].OrderChannel = user.OrderAppClient.OpenAppChannel(userPeer)
+	m.ClientConfigs[userID].TradeChannel = user.TradeAppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
 	// go m.goBatching()
 	return true
@@ -181,9 +193,11 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 // }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
-	for orders := range m.ClientConfigs[userID].AppClient.TriggerChannel {
+	for orders := range m.ClientConfigs[userID].OrderAppClient.TriggerChannel {
 		for _, order := range orders {
-			if order.OrderID == app.EndID {
+			if order.OrderID == tradeApp.EndID {
+				endTrade, _ := tradeApp.EndTrade(m.PrivateKey)
+				m.ClientConfigs[userID].TradeChannel.SendNewTrades([]*tradeApp.Trade{endTrade}, nil, nil, false)
 				continue
 			}
 
@@ -193,13 +207,23 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			}
 			_logger.Info("[%v::%vv] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
 
-			m.Orders[order.OrderID] = order
+			_order := order.Clone()
+			m.Orders[_order.OrderID] = &tradeApp.Order{
+				OrderID:   _order.OrderID,
+				Price:     _order.Price,
+				Amount:    _order.Amount,
+				Side:      _order.Side,
+				Owner:     _order.Owner,
+				Signature: _order.Signature,
+			}
+
+			__order := order.Clone()
 			m.addOrder(&MatcherOrder{
 				Data: &ShadowOrder{
-					Price:  order.Price,
-					Amount: order.Amount,
-					Side:   order.Side,
-					From:   order.OrderID,
+					Price:  __order.Price,
+					Amount: __order.Amount,
+					Side:   __order.Side,
+					From:   __order.OrderID,
 				},
 				Owner: userID,
 			})
@@ -208,9 +232,10 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 }
 
 func (m *Matcher) Settle(userID uuid.UUID) {
-	m.ClientConfigs[userID].VerifyChannel.Settle()
+	m.ClientConfigs[userID].TradeChannel.Settle()
+	m.ClientConfigs[userID].OrderChannel.Settle()
 }
 
 func (m *Matcher) Shutdown(userID uuid.UUID) {
-	m.ClientConfigs[userID].AppClient.Shutdown()
+	m.ClientConfigs[userID].TradeAppClient.Shutdown()
 }

@@ -2,16 +2,14 @@ package util
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"log"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/token"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/verifierApp"
+	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,10 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	ethchannel "perun.network/go-perun/backend/ethereum/channel"
-	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 	swallet "perun.network/go-perun/backend/ethereum/wallet/simple"
-	"perun.network/go-perun/channel"
-	"perun.network/go-perun/wire"
 )
 
 func DeployPerunContracts(nodeURL string, chainID uint64, privatekey string, gavTokenAddr common.Address) (adj common.Address, ahs []common.Address, app common.Address) {
@@ -31,7 +26,7 @@ func DeployPerunContracts(nodeURL string, chainID uint64, privatekey string, gav
 		panic(err)
 	}
 	w := swallet.NewWallet(k)
-	cb, err := client.CreateContractBackend(nodeURL, chainID, w)
+	cb, err := orderClient.CreateContractBackend(nodeURL, chainID, w)
 	if err != nil {
 		panic(err)
 	}
@@ -117,71 +112,32 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 	return token, onchain
 }
 
-func SetupClient(
-	bus wire.Bus,
-	nodeURL string,
-	adjudicator common.Address,
-	assets []ethwallet.Address,
-	privateKey *ecdsa.PrivateKey,
-	app *app.VerifyApp,
-	stakes []channel.Bal,
-	useTrigger bool,
-	gavinAddr common.Address,
-) *client.AppClient {
-	// k, err := crypto.HexToECDSA(privateKey)
-	// if err != nil {
-	// 	panic(err)
-	// }
+// // balanceLogger is a utility for logging client balances.
+// type balanceLogger struct {
+// 	ethClient *ethclient.Client
+// }
 
-	w := swallet.NewWallet(privateKey)
-	acc := crypto.PubkeyToAddress(privateKey.PublicKey)
+// // newBalanceLogger creates a new balance logger for the specified ledger.
+// func NewBalanceLogger(chainURL string) balanceLogger {
+// 	c, err := ethclient.Dial(chainURL)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return balanceLogger{ethClient: c}
+// }
 
-	c, err := client.SetupAppClient(
-		bus,
-		w,
-		acc,
-		nodeURL,
-		constants.CHAIN_ID,
-		adjudicator,
-		assets,
-		app,
-		stakes,
-		useTrigger,
-		gavinAddr,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	return c
-}
-
-// balanceLogger is a utility for logging client balances.
-type balanceLogger struct {
-	ethClient *ethclient.Client
-}
-
-// newBalanceLogger creates a new balance logger for the specified ledger.
-func NewBalanceLogger(chainURL string) balanceLogger {
-	c, err := ethclient.Dial(chainURL)
-	if err != nil {
-		panic(err)
-	}
-	return balanceLogger{ethClient: c}
-}
-
-// LogBalances prints the balances of the specified clients.
-func (l balanceLogger) LogBalances(clients ...*client.AppClient) {
-	bals := make([]*big.Float, len(clients))
-	for i, c := range clients {
-		bal, err := l.ethClient.BalanceAt(context.TODO(), c.WalletAddress(), nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		bals[i] = client.WeiToEth(bal)
-	}
-	log.Println("Client balances (ETH):", bals)
-}
+// // LogBalances prints the balances of the specified clients.
+// func (l balanceLogger) LogBalances(clients ...*client.AppClient) {
+// 	bals := make([]*big.Float, len(clients))
+// 	for i, c := range clients {
+// 		bal, err := l.ethClient.BalanceAt(context.TODO(), c.WalletAddress(), nil)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		bals[i] = client.WeiToEth(bal)
+// 	}
+// 	log.Println("Client balances (ETH):", bals)
+// }
 
 // The contract uses Openzeppelin smart contract to verify ECDSA.
 // The Openzeppelin ECDSA contract uses V = {27, 28}

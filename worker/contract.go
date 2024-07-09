@@ -5,9 +5,9 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/google/uuid"
 )
 
@@ -118,6 +118,6 @@ func (w *Worker) prepareNonceAndGasPrice(value float64, gasLimit int) {
 
 	w.Auth.Nonce = big.NewInt(int64(nonce))
 	w.Auth.GasPrice = gasPrice
-	w.Auth.Value = client.EthToWei(big.NewFloat(float64(value)))
+	w.Auth.Value = orderClient.EthToWei(big.NewFloat(float64(value)))
 	w.Auth.GasLimit = uint64(gasLimit)
 }

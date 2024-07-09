@@ -15,6 +15,15 @@ type ShadowOrder struct {
 	From   uuid.UUID
 }
 
+func (m *ShadowOrder) Clone() *ShadowOrder {
+	return &ShadowOrder{
+		Price:  new(big.Int).Set(m.Price),
+		Amount: new(big.Int).Set(m.Amount),
+		Side:   m.Side,
+		From:   m.From,
+	}
+}
+
 func (o *ShadowOrder) Encode_TransferBatching() ([]byte, error) {
 	data := new(bytes.Buffer)
 

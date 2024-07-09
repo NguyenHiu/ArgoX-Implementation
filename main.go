@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	TOKEN "github.com/NguyenHiu/lightning-exchange/contracts/generated/token"
@@ -15,6 +14,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/listener"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/matcher"
+	"github.com/NguyenHiu/lightning-exchange/orderApp"
 	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/supermatcher"
 	"github.com/NguyenHiu/lightning-exchange/user"
@@ -78,14 +78,14 @@ func SetupMatcher(onchainAddr common.Address, client *ethclient.Client, privateK
 	return sm
 }
 
-func FromData(ordersData []*data.OrderData, ownerPrvKey string) []*app.Order {
+func FromData(ordersData []*data.OrderData, ownerPrvKey string) []*orderApp.Order {
 	prvkey, _ := crypto.HexToECDSA(ownerPrvKey)
 	address := crypto.PubkeyToAddress(prvkey.PublicKey)
 
-	orders := []*app.Order{}
+	orders := []*orderApp.Order{}
 	for _, order := range ordersData {
 		id, _ := uuid.NewRandom()
-		appOrder := &app.Order{
+		appOrder := &orderApp.Order{
 			OrderID: id,
 			Price:   big.NewInt(int64(order.Price)),
 			Amount:  big.NewInt(int64(order.Amount)),
@@ -142,9 +142,9 @@ func main() {
 
 	// Init Bob
 	bob := user.NewUser(constants.KEY_BOB)
-	busBob := matcher1.SetupClient(bob.ID)
-	bob.SetupClient(busBob, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, _token)
-	if ok := matcher1.OpenAppChannel(bob.ID, bob.AppClient.WireAddress()); !ok {
+	busBobOrder, busBobTrade := matcher1.SetupClient(bob.ID)
+	bob.SetupClient(busBobOrder, busBobTrade, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.OrderApp, matcher1.TradeApp, matcher1.Stakes, _token)
+	if ok := matcher1.OpenAppChannel(bob.ID, bob.OrderAppClient.WireAddress()); !ok {
 		log.Fatalln("OpenAppChannel Failed")
 	}
 	bob.AcceptedChannel()
@@ -155,25 +155,25 @@ func main() {
 
 	// Init Alice
 	alice := user.NewUser(constants.KEY_ALICE)
-	busAlice := matcher1.SetupClient(alice.ID)
-	alice.SetupClient(busAlice, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.App, matcher1.Stakes, _token)
-	if ok := matcher1.OpenAppChannel(alice.ID, alice.AppClient.WireAddress()); !ok {
+	busAliceOrder, busAliceTrade := matcher1.SetupClient(alice.ID)
+	alice.SetupClient(busAliceOrder, busAliceTrade, constants.CHAIN_URL, matcher1.Adjudicator, matcher1.AssetHolders, matcher1.OrderApp, matcher1.TradeApp, matcher1.Stakes, _token)
+	if ok := matcher1.OpenAppChannel(alice.ID, alice.OrderAppClient.WireAddress()); !ok {
 		log.Fatalln("OpenAppChannel Failed")
 	}
 	alice.AcceptedChannel()
 
 	{
-		bobOrders := FromData(data.RandomOrders(1, 20, 1, 10, 25, "./data/bobOrders.json"), bob.PrivateKey)
-		aliceOrders := FromData(data.RandomOrders(15, 30, 1, 10, 25, "./data/aliceOrders.json"), alice.PrivateKey)
+		bobOrders := FromData(data.RandomOrders(1, 20, 1, 10, 100, "./data/bobOrders.json"), bob.PrivateKey)
+		aliceOrders := FromData(data.RandomOrders(15, 30, 1, 10, 100, "./data/aliceOrders.json"), alice.PrivateKey)
 		bob.SendNewOrders(bobOrders)
 		alice.SendNewOrders(aliceOrders)
-		<-time.After(time.Second * 2)
+		<-time.After(time.Second * 10)
 	}
 	{
-		bobOrders := FromData(data.RandomOrders(1, 20, 1, 10, 25, "./data/bobOrders.json"), bob.PrivateKey)
-		aliceOrders := FromData(data.RandomOrders(15, 30, 1, 10, 25, "./data/aliceOrders.json"), alice.PrivateKey)
+		bobOrders := FromData(data.RandomOrders(1, 20, 1, 10, 100, "./data/bobOrders.json"), bob.PrivateKey)
+		aliceOrders := FromData(data.RandomOrders(15, 30, 1, 10, 100, "./data/aliceOrders.json"), alice.PrivateKey)
 		bob.SendNewOrders(bobOrders)
-		<-time.After(time.Second * 2)
+		<-time.After(time.Second * 10)
 		alice.SendNewOrders(aliceOrders)
 	}
 
@@ -190,11 +190,11 @@ func main() {
 		// if err != nil {
 		// 	log.Fatal(err)
 		// }
-		bobBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, bob.AppClient.WalletAddress())
+		bobBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, bob.OrderAppClient.WalletAddress())
 		if err != nil {
 			log.Fatal(err)
 		}
-		aliceBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, alice.AppClient.WalletAddress())
+		aliceBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, alice.OrderAppClient.WalletAddress())
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -204,26 +204,28 @@ func main() {
 		_logger.Info("alice's balance: %v\n", aliceBalance)
 	}
 
-	_logger.Debug("waiting for end orders\n")
+	// _logger.Debug("waiting for end orders\n")
+	<-time.After(time.Second * 15)
+
+	{
+		// Create Final Order
+		order, err := orderApp.EndOrder(constants.KEY_ALICE)
+		if err != nil {
+			_logger.Error("create an end order is fail, err: %v\n", err)
+		}
+		alice.SendNewOrders([]*orderApp.Order{order})
+	}
+
+	{
+		// Create Final Order
+		order, err := orderApp.EndOrder(constants.KEY_BOB)
+		if err != nil {
+			_logger.Error("create an end order is fail, err: %v\n", err)
+		}
+		bob.SendNewOrders([]*orderApp.Order{order})
+	}
+
 	<-time.After(time.Second * 5)
-
-	{
-		// Create Final Order
-		order, err := app.EndOrder(constants.KEY_ALICE)
-		if err != nil {
-			_logger.Error("create an end order is fail, err: %v\n", err)
-		}
-		alice.SendNewOrders([]*app.Order{order})
-	}
-
-	{
-		// Create Final Order
-		order, err := app.EndOrder(constants.KEY_BOB)
-		if err != nil {
-			_logger.Error("create an end order is fail, err: %v\n", err)
-		}
-		bob.SendNewOrders([]*app.Order{order})
-	}
 
 	// Payout.
 	_logger.Info("Settle\n")
@@ -252,11 +254,11 @@ func main() {
 		// if err != nil {
 		// 	log.Fatal(err)
 		// }
-		bobBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, bob.AppClient.WalletAddress())
+		bobBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, bob.OrderAppClient.WalletAddress())
 		if err != nil {
 			log.Fatal(err)
 		}
-		aliceBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, alice.AppClient.WalletAddress())
+		aliceBalance, err := tokenInstance.BalanceOf(&bind.CallOpts{Context: context.Background()}, alice.OrderAppClient.WalletAddress())
 		if err != nil {
 			log.Fatal(err)
 		}

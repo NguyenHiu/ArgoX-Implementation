@@ -8,8 +8,8 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/app"
 	"github.com/NguyenHiu/lightning-exchange/constants"
+	"github.com/NguyenHiu/lightning-exchange/tradeApp"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
@@ -18,6 +18,13 @@ import (
 type MatcherOrder struct {
 	Data  *ShadowOrder
 	Owner uuid.UUID
+}
+
+func (m *MatcherOrder) Clone() *MatcherOrder {
+	return &MatcherOrder{
+		Data:  m.Data.Clone(),
+		Owner: m.Owner,
+	}
 }
 
 type Batch struct {
@@ -34,7 +41,7 @@ func (m *Matcher) NewBatch(_price, _amount *big.Int, _side bool, _orders []*Matc
 	id, _ := uuid.NewRandom()
 	orders := []*ExpandOrder{}
 	for _, order := range _orders {
-		var trades []*app.Trade
+		var trades []*tradeApp.Trade
 		if order.Data.Side == constants.BID {
 			trades = m.mappingBidtoTrade[order.Data.From]
 		} else {
@@ -106,7 +113,7 @@ func (b *Batch) Encode_TransferBatching(m *Matcher) ([]byte, error) {
 		}
 
 		// No. Executed Trades
-		var executedTrades []*app.Trade
+		var executedTrades []*tradeApp.Trade
 		if order.ShadowOrder.Side == constants.BID {
 			executedTrades = m.mappingBidtoTrade[order.ShadowOrder.From]
 		} else {
@@ -226,7 +233,11 @@ func (b *Batch) Sign(_prvkey *ecdsa.PrivateKey) error {
 
 // TODO: batching orders having the same price
 func (m *Matcher) batching() []*Batch {
+	_logger.Debug("batching...\n")
 	batches := []*Batch{}
+
+	m.Mux.Lock()
+	defer m.Mux.Unlock()
 
 	threshold := len(m.BidOrders) / 4
 	for len(m.BidOrders) > threshold {
@@ -264,6 +275,7 @@ func (m *Matcher) batching() []*Batch {
 		batches = append(batches, batch)
 	}
 
+	_logger.Debug("got %v batch(es)\n", len(batches))
 	return batches
 }
 

@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/google/uuid"
 )
@@ -28,7 +28,7 @@ func (r *Reporter) reporting() {
 		for k, v := range r.PendingBatches {
 			if time.Now().Unix()-v >= r.WaitingTime {
 				_logger.Info("Report batch::%v\n", k.String())
-				r.prepareNonceAndGasPrice(0, 1000000)
+				r.prepareNonceAndGasPrice(0, 2000000)
 				batchID, _ := k.MarshalBinary()
 				var _batchID [16]byte
 				copy(_batchID[:], batchID[:16])
@@ -151,6 +151,6 @@ func (r *Reporter) prepareNonceAndGasPrice(value float64, gasLimit int) {
 
 	r.Auth.Nonce = big.NewInt(int64(nonce))
 	r.Auth.GasPrice = gasPrice
-	r.Auth.Value = client.EthToWei(big.NewFloat(float64(value)))
+	r.Auth.Value = orderClient.EthToWei(big.NewFloat(float64(value)))
 	r.Auth.GasLimit = uint64(gasLimit)
 }

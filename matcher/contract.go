@@ -7,8 +7,8 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/NguyenHiu/lightning-exchange/client"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -109,6 +109,6 @@ func (m *Matcher) prepareNonceAndGasPrice(value float64, gasLimit int) {
 
 	m.Auth.Nonce = big.NewInt(int64(nonce))
 	m.Auth.GasPrice = gasPrice
-	m.Auth.Value = client.EthToWei(big.NewFloat(float64(value)))
+	m.Auth.Value = orderClient.EthToWei(big.NewFloat(float64(value)))
 	m.Auth.GasLimit = uint64(gasLimit)
 }
