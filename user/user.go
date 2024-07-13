@@ -51,10 +51,11 @@ func (u *User) SetupClient(
 	_orderApp *orderApp.OrderApp,
 	_tradeApp *tradeApp.TradeApp,
 	stakes []channel.Bal,
+	emptyStake []channel.Bal,
 	gavinAddr common.Address,
 ) {
 	_prvKey, _ := crypto.HexToECDSA(u.PrivateKey)
-	u.OrderAppClient = orderClient.SetupClient(busOrder, nodeURL, adjudicator, assets, _prvKey, _orderApp, stakes, gavinAddr)
+	u.OrderAppClient = orderClient.SetupClient(busOrder, nodeURL, adjudicator, assets, _prvKey, _orderApp, emptyStake, gavinAddr)
 	u.TradeAppClient = tradeClient.SetupClient(busTrade, nodeURL, adjudicator, assets, _prvKey, _tradeApp, stakes, gavinAddr)
 }
 

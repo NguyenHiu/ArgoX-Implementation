@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -232,4 +233,28 @@ func prepareNonceAndGasPrice(auth *bind.TransactOpts, client *ethclient.Client, 
 	auth.GasPrice = gasPrice
 	auth.Value = &big.Int{}
 	auth.GasLimit = uint64(300000)
+}
+
+func CalculateTotalUsedGas(addr common.Address) int {
+	totalGas := 0
+	_client, _ := ethclient.Dial(constants.CHAIN_URL)
+
+	for i := new(big.Int); ; i.Add(i, big.NewInt(1)) {
+		block, err := _client.BlockByNumber(context.Background(), i)
+		if err != nil {
+			return totalGas
+		}
+		for _, tx := range block.Transactions() {
+			if from, err := types.Sender(types.NewLondonSigner(big.NewInt(1337)), tx); err == nil {
+				if from.Cmp(addr) == 0 {
+					receipt, err := _client.TransactionReceipt(context.Background(), tx.Hash())
+					if err != nil {
+						log.Fatal(err)
+					}
+					totalGas += int(receipt.GasUsed)
+				}
+			}
+		}
+
+	}
 }

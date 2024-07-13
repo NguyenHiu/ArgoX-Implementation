@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -50,6 +51,10 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 			m.Mux.Unlock()
 			if !ok {
 				continue
+			}
+
+			if batch.Side == constants.BID {
+				_logger.Debug("Matched, amount: %v\n", batch.Amount)
 			}
 
 			onchainOrders := []onchain.OnchainOrder{}

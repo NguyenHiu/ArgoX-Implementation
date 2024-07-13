@@ -9,6 +9,8 @@ func (m *Matcher) SendBatch(batch *Batch) {
 	m.Batches[batch.BatchID] = batch
 	m.Mux.Unlock()
 
+	_logger.Debug("[%v] Send batch::%v, amount: %v, side: %v, price: %v\n", m.Address.String()[:5], batch.BatchID.String()[:5], batch.Amount, batch.Side, batch.Price)
+
 	// Send instantly
 	orders := []*supermatcher.ExpandOrder{}
 	for _, order := range batch.Orders {

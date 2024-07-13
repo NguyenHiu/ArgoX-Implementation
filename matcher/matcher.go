@@ -8,6 +8,7 @@ import (
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
+	"github.com/NguyenHiu/lightning-exchange/data"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/orderApp"
 	"github.com/NguyenHiu/lightning-exchange/orderClient"
@@ -41,6 +42,7 @@ type Matcher struct {
 	OrderApp      *orderApp.OrderApp
 	TradeApp      *tradeApp.TradeApp
 	Stakes        []*big.Int
+	EmptyStakes   []*big.Int
 
 	// Gavin Address
 	GavinAddress common.Address
@@ -65,6 +67,9 @@ type Matcher struct {
 	Mux     sync.Mutex
 
 	SuperMatcherInstance *supermatcher.SuperMatcher
+
+	// Store orders' data
+	OrderStorage []*data.OrderData
 }
 
 func NewMatcher(
@@ -108,6 +113,7 @@ func NewMatcher(
 		OrderApp:      _orderApp,
 		TradeApp:      _tradeApp,
 		Stakes:        []*big.Int{stakeETH, stakeGVN},
+		EmptyStakes:   []*big.Int{new(big.Int), new(big.Int)},
 
 		BidOrders:         []*MatcherOrder{},
 		AskOrders:         []*MatcherOrder{},
@@ -127,6 +133,8 @@ func NewMatcher(
 
 		GavinAddress:         gavinAddress,
 		SuperMatcherInstance: supermatcherInstance,
+
+		OrderStorage: make([]*data.OrderData, 0),
 	}
 }
 
@@ -156,7 +164,7 @@ func (m *Matcher) NewTrade(bid, ask uuid.UUID, price, amount *big.Int) *tradeApp
 func (m *Matcher) SetupClient(userID uuid.UUID) (wire.Bus, wire.Bus) {
 	orderBus := wire.NewLocalBus()
 	tradeBus := wire.NewLocalBus()
-	orderAppClient := orderClient.SetupClient(orderBus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.OrderApp, m.Stakes, m.GavinAddress)
+	orderAppClient := orderClient.SetupClient(orderBus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.OrderApp, m.EmptyStakes, m.GavinAddress)
 	tradeAppClient := tradeClient.SetupClient(tradeBus, constants.CHAIN_URL, m.Adjudicator, m.AssetHolders, m.PrivateKey, m.TradeApp, m.Stakes, m.GavinAddress)
 	m.ClientConfigs[userID] = &ClientConfig{
 		TradeAppClient: tradeAppClient,
@@ -227,6 +235,12 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 				},
 				Owner: userID,
 			})
+
+			m.OrderStorage = append(m.OrderStorage, &data.OrderData{
+				Price:  int(__order.Price.Int64()),
+				Amount: int(__order.Amount.Int64()),
+				Side:   __order.Side,
+			})
 		}
 	}
 }
@@ -238,4 +252,8 @@ func (m *Matcher) Settle(userID uuid.UUID) {
 
 func (m *Matcher) Shutdown(userID uuid.UUID) {
 	m.ClientConfigs[userID].TradeAppClient.Shutdown()
+}
+
+func (m *Matcher) ExportOrdersData(filename string) error {
+	return data.SaveOrders(m.OrderStorage, filename)
 }

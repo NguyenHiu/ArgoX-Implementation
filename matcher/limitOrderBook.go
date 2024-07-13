@@ -41,15 +41,9 @@ func (m *Matcher) Log() {
 	_logger.Debug("-----------------------------\n")
 }
 
-func (m *Matcher) matching() bool {
-	if !m.canMatch() {
-		return false
-	}
-
+func (m *Matcher) matching() {
 	m.Mux.Lock()
 	defer m.Mux.Unlock()
-
-	// <-time.After(time.Second)
 
 	// naive matching
 	for m.canMatch() {
@@ -58,11 +52,12 @@ func (m *Matcher) matching() bool {
 		bidOrder := m.BidOrders[0]
 		askOrder := m.AskOrders[0]
 
-		// TODO: Send messages after matching!
 		minAmount := bidOrder.Data.Amount
 		if minAmount.Cmp(askOrder.Data.Amount) == 1 {
 			minAmount = askOrder.Data.Amount
 		}
+
+		_logger.Debug("Matched, amount: %v\n", minAmount)
 
 		bidOrder.Data.Amount = new(big.Int).Sub(bidOrder.Data.Amount, minAmount)
 		askOrder.Data.Amount = new(big.Int).Sub(askOrder.Data.Amount, minAmount)
@@ -105,7 +100,6 @@ func (m *Matcher) matching() bool {
 		}
 		// <-time.After(time.Millisecond * 500)
 	}
-	return true
 }
 
 func (m *Matcher) canMatch() bool {
