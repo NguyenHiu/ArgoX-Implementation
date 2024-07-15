@@ -70,6 +70,12 @@ type Matcher struct {
 
 	// Store orders' data
 	OrderStorage []*data.OrderData
+
+	/* MATCHING TIME */
+	NoOrder    int64
+	CreateTime map[uuid.UUID]int64
+	/* MATCHING TIME */
+
 }
 
 func NewMatcher(
@@ -135,6 +141,11 @@ func NewMatcher(
 		SuperMatcherInstance: supermatcherInstance,
 
 		OrderStorage: make([]*data.OrderData, 0),
+
+		/* MATCHING TIME */
+		NoOrder:    0,
+		CreateTime: make(map[uuid.UUID]int64),
+		/* MATCHING TIME */
 	}
 }
 

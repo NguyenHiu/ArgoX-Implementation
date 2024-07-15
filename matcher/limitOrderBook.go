@@ -12,6 +12,11 @@ import (
 // bid: 1 --> 2
 // ask: 2 --> 1
 func (m *Matcher) addOrder(order *MatcherOrder) {
+	/* MATCHING TIME */
+	m.NoOrder += 1
+	m.CreateTime[order.Data.From] = m.NoOrder
+	/* MATCHING TIME */
+
 	if order.Data.Side == constants.BID {
 		m.BidOrders = addAccordingTheOrder(order, m.BidOrders)
 	} else {
@@ -58,6 +63,8 @@ func (m *Matcher) matching() {
 		}
 
 		_logger.Debug("Matched, amount: %v\n", minAmount)
+		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[bidOrder.Data.From])
+		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[askOrder.Data.From])
 
 		bidOrder.Data.Amount = new(big.Int).Sub(bidOrder.Data.Amount, minAmount)
 		askOrder.Data.Amount = new(big.Int).Sub(askOrder.Data.Amount, minAmount)

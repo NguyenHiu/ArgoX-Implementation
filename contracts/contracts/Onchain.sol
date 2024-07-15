@@ -51,6 +51,12 @@ contract Onchain {
         _owner = msg.sender;
     }
 
+    /** MATCHING TIME */
+    uint256 noBatches;
+    mapping(bytes16 => uint256) BatchCreatedTime;
+    event MatchTimestamp(uint256);
+    /** MATCHING TIME */
+
     /**
      * Events
      */
@@ -160,6 +166,10 @@ contract Onchain {
         bytes16 batchID,
         Order[] memory _ords
     ) public isPendingBatch(batchID) isBatchOwner(batchID) {
+        /** MATCHING TIME */
+        emit MatchTimestamp(noBatches - BatchCreatedTime[batchID]);
+        /** MATCHING TIME */
+
         uint256 _temp = 0;
         bytes memory ordersHash;
         for (uint8 i = 0; i < _ords.length; i++) {
@@ -283,6 +293,11 @@ contract Onchain {
         address owner,
         bytes memory sign
     ) public {
+        /** MATCHING TIME */
+        noBatches += 1;
+        BatchCreatedTime[batchID] = noBatches;
+        /** MATCHING TIME */
+
         emit AcceptBatch(batchID, price, amount, side);
         Batch memory _nb = Batch(batchID, price, amount, side, owner, sign, 0);
         _sendBatch(_nb);

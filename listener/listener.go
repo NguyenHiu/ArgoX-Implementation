@@ -302,6 +302,24 @@ func WatchLogRecoverError(instance *onchain.Onchain, opt *bind.WatchOpts) {
 	}
 }
 
+/** MATCHING TIME */
+func WatchLogMatchingTimestamp(instance *onchain.Onchain, opt *bind.WatchOpts) {
+	logs := make(chan *onchain.OnchainMatchTimestamp)
+	sub, err := instance.WatchMatchTimestamp(opt, logs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sub.Unsubscribe()
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+		case vLogs := <-logs:
+			_logger.Debug("Time: %v\n", vLogs.Arg0)
+		}
+	}
+}
+
 // func LogOrderBookOverview(instance *onchain.Onchain) {
 // 	bidBatches, _ := instance.GetBidOrders(&bind.CallOpts{Context: context.Background()})
 // 	askBatches, _ := instance.GetAskOrders(&bind.CallOpts{Context: context.Background()})
