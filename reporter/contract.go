@@ -17,7 +17,7 @@ func (r *Reporter) Reporting() {
 }
 
 func (r *Reporter) reporting() {
-	ticker := time.NewTicker(6 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	for range ticker.C {
 		r.Mux.Lock()
 		if len(r.PendingBatches) == 0 {

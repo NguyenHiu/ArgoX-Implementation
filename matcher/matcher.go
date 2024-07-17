@@ -71,10 +71,13 @@ type Matcher struct {
 	// Store orders' data
 	OrderStorage []*data.OrderData
 
-	/* MATCHING TIME */
-	NoOrder    int64
-	CreateTime map[uuid.UUID]int64
-	/* MATCHING TIME */
+	/* MATCHING ANALYSIS */
+	NoOrder                 int64
+	CreateTime              map[uuid.UUID]int64
+	TotalTimeLocal          int64
+	TotalMatchedAmountLocal *big.Int
+	PriceCurveLocal         []*big.Int
+	/* MATCHING ANALYSIS */
 
 }
 
@@ -142,10 +145,13 @@ func NewMatcher(
 
 		OrderStorage: make([]*data.OrderData, 0),
 
-		/* MATCHING TIME */
-		NoOrder:    0,
-		CreateTime: make(map[uuid.UUID]int64),
-		/* MATCHING TIME */
+		/* MATCHING ANALYSIS */
+		NoOrder:                 0,
+		CreateTime:              make(map[uuid.UUID]int64),
+		TotalTimeLocal:          0,
+		TotalMatchedAmountLocal: new(big.Int),
+		PriceCurveLocal:         []*big.Int{},
+		/* MATCHING ANALYSIS */
 	}
 }
 

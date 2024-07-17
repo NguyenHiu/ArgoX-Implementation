@@ -3,6 +3,7 @@ package listener
 import (
 	"context"
 	"log"
+	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
@@ -14,6 +15,12 @@ import (
 )
 
 var _logger = logger.NewLogger("Listener", logger.Yellow, logger.Bold)
+
+type Listener struct {
+	TotalMatchedAmountOnchain *big.Int
+	TotalTimeOnchain          int
+	PriceCurveOnchain         []*big.Int
+}
 
 func StartListener(onchainAddr common.Address) {
 	client, _ := ethclient.Dial(constants.CHAIN_URL)
@@ -177,6 +184,7 @@ func WatchRevertBatch(instance *onchain.Onchain, opt *bind.WatchOpts) {
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Revert] Batch::%v\n", id.String())
+			log.Fatal("Revert batch")
 			// LogOrderBookOverview(instance)
 		}
 	}

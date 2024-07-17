@@ -20,7 +20,7 @@ func (m *Matcher) SendBatch(batch *Batch) {
 			OriginalOrder: order.OriginalOrder,
 		})
 	}
-	m.SuperMatcherInstance.SendBatch(&supermatcher.Batch{
+	m.SuperMatcherInstance.AddBatch(&supermatcher.Batch{
 		BatchID:   batch.BatchID,
 		Price:     batch.Price,
 		Amount:    batch.Amount,

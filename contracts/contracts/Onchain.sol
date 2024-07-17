@@ -47,7 +47,7 @@ contract Onchain {
     constructor(address _token) {
         _GVNToken = _token;
         _registerFee = 1 ether;
-        _waitingTime = 5 seconds;
+        _waitingTime = 10 seconds;
         _owner = msg.sender;
     }
 

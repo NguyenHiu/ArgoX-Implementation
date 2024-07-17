@@ -74,8 +74,13 @@ func (m *Matcher) matching() {
 		}
 
 		_logger.Debug("Matched, amount: %v\n", minAmount)
+		_logger.Debug("Matched, amount: %v\n", minAmount)
 		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[bidOrder.Data.From])
 		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[askOrder.Data.From])
+		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
+		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
+		m.TotalTimeLocal += m.NoOrder - m.CreateTime[bidOrder.Data.From]
+		m.TotalTimeLocal += m.NoOrder - m.CreateTime[askOrder.Data.From]
 
 		bidOrder.Data.Amount = new(big.Int).Sub(bidOrder.Data.Amount, minAmount)
 		askOrder.Data.Amount = new(big.Int).Sub(askOrder.Data.Amount, minAmount)
@@ -88,6 +93,7 @@ func (m *Matcher) matching() {
 		}
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
+		m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
 
 		trade := m.NewTrade(bidOrder.Data.From, askOrder.Data.From, matchPrice, minAmount)
 

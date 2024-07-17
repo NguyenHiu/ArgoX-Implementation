@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/big"
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
@@ -18,7 +17,6 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/NguyenHiu/lightning-exchange/worker"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"perun.network/go-perun/backend/ethereum/wallet"
 )
 
 var _logger = logger.NewLogger("Main", logger.Red, logger.Bold)
@@ -118,41 +116,44 @@ func main() {
 		PrintBalances(_token, clientNode, matcher.Address)
 	}
 
-	orders, _ := data.LoadOrders("./data/orders.json")
-	for _, order := range orders {
-		newOrder := orderApp.NewOrder(
-			big.NewInt(int64(order.Price)),
-			big.NewInt(int64(order.Amount)),
-			order.Side,
-			wallet.AsWalletAddr(alice.Address),
-		)
-		newOrder.Sign(alice.PrivateKey)
-		j := 0
-		_check := time.Now()
-		for j < constants.SEND_TO {
-			if time.Since(_check).Milliseconds() > 500*constants.NO_MATCHER {
-				_logger.Error("Send Order Loop runs forever!\n")
-				break
-			}
-			for _id, _conn := range alice.Connections {
-				_conn.Mux.Lock()
-				isBlocked := _conn.IsBlocked
-				_conn.Mux.Unlock()
-				if !isBlocked {
-					alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
-					_conn.IsBlocked = true
-					go func(conn *user.Connection) {
-						<-time.After(time.Millisecond * 500)
-						conn.Mux.Lock()
-						defer conn.Mux.Unlock()
-						conn.IsBlocked = false
-					}(_conn)
-					j += 1
-					_check = time.Now()
-				}
-			}
-		}
-	}
+	// orders, _ := data.LoadOrders("./data/_orders.json")
+	// for _, order := range orders {
+	// 	// if i > 100 {
+	// 	// 	break
+	// 	// }
+	// 	newOrder := orderApp.NewOrder(
+	// 		big.NewInt(int64(order.Price)),
+	// 		big.NewInt(int64(order.Amount)),
+	// 		order.Side,
+	// 		wallet.AsWalletAddr(alice.Address),
+	// 	)
+	// 	newOrder.Sign(alice.PrivateKey)
+	// 	j := 0
+	// 	_check := time.Now()
+	// 	for j < constants.SEND_TO {
+	// 		if time.Since(_check).Milliseconds() > 500*constants.NO_MATCHER {
+	// 			_logger.Error("Send Order Loop runs forever!\n")
+	// 			break
+	// 		}
+	// 		for _id, _conn := range alice.Connections {
+	// 			_conn.Mux.Lock()
+	// 			isBlocked := _conn.IsBlocked
+	// 			_conn.Mux.Unlock()
+	// 			if !isBlocked {
+	// 				alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
+	// 				_conn.IsBlocked = true
+	// 				go func(conn *user.Connection) {
+	// 					<-time.After(time.Millisecond * 500)
+	// 					conn.Mux.Lock()
+	// 					defer conn.Mux.Unlock()
+	// 					conn.IsBlocked = false
+	// 				}(_conn)
+	// 				j += 1
+	// 				_check = time.Now()
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	/*
 	 *		Random new orders
@@ -190,7 +191,6 @@ func main() {
 			}
 		}
 	}
-
 	data.SaveOrders(_newOrders, "./data/_orders.json")
 
 	_logger.Debug("waiting for end orders\n")
@@ -223,15 +223,21 @@ func main() {
 		matcher.Shutdown(alice.ID)
 	}
 
-	totalGas := util.CalculateTotalUsedGas(alice.Address) + util.CalculateTotalUsedGas(sm.Address)
-	for _, matcher := range matchers {
-		totalGas += util.CalculateTotalUsedGas(matcher.Address)
-	}
-	_logger.Debug("total gas: %v\n", totalGas)
+	// Export Data
 
-	_logger.Debug("supermatcher: %v\n", util.CalculateTotalUsedGas(sm.Address))
+	// _totalMatchedAmount := new(big.Int)
+	// _totalTime := 0
+	// _totalGas := util.CalculateTotalUsedGas(alice.Address) + util.CalculateTotalUsedGas(sm.Address)
+	// for _, matcher := range matchers {
+	// 	_totalGas += util.CalculateTotalUsedGas(matcher.Address)
+	// 	_totalTime += int(matcher.TotalTime)
+	// 	_totalMatchedAmount.Add(_totalMatchedAmount, matcher.TotalMatchedAmount)
+	// }
+	// _logger.Debug("total gas: %v\n", _totalGas)
+	// _logger.Debug("supermatcher: %v\n", util.CalculateTotalUsedGas(sm.Address))
+	// _logger.Debug("total matched amount: %v\n", _totalMatchedAmount)
+	// _logger.Debug("total matched time: %v\n", _totalTime)
+	_logger.Debug("Running time: %v seconds\n", time.Since(START_TIME).Seconds())
 
 	<-time.After(time.Second * 2)
-
-	_logger.Debug("Running time: %v seconds\n", time.Since(START_TIME).Seconds())
 }
