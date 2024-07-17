@@ -105,8 +105,9 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 
 	// Mint gavin token
 	mintGavinToken(tokenInstance, onchain, client, constants.KEY_DEPLOYER)
-	mintGavinToken(tokenInstance, onchain, client, constants.KEY_MATCHER_1)
-	mintGavinToken(tokenInstance, onchain, client, constants.KEY_MATCHER_2)
+	for i := 0; i < constants.NO_MATCHER; i++ {
+		mintGavinToken(tokenInstance, onchain, client, constants.MATCHER_PRVKEYS[i])
+	}
 	mintGavinToken(tokenInstance, onchain, client, constants.KEY_ALICE)
 	mintGavinToken(tokenInstance, onchain, client, constants.KEY_BOB)
 

@@ -1,6 +1,8 @@
 package user
 
 import (
+	"sync"
+
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/orderApp"
 	"github.com/NguyenHiu/lightning-exchange/orderClient"
@@ -17,32 +19,47 @@ import (
 
 var _logger = logger.NewLogger("User", logger.Magenta, logger.None)
 
-type User struct {
-	ID             uuid.UUID
-	PrivateKey     string
+type Connection struct {
 	OrderAppClient *orderClient.OrderAppClient
 	OrderChannel   *orderClient.OrderChannel
 	TradeAppClient *tradeClient.TradeAppClient
 	TradeChannel   *tradeClient.TradeChannel
-	Address        common.Address
+	IsBlocked      bool
+	Mux            sync.Mutex
 }
 
-func NewUser(privateKey string) *User {
-	uuid, _ := uuid.NewRandom()
-	privKey, _ := crypto.HexToECDSA(privateKey)
-
-	return &User{
-		ID:             uuid,
-		PrivateKey:     privateKey,
+func NewConnection() *Connection {
+	return &Connection{
 		OrderAppClient: &orderClient.OrderAppClient{},
 		OrderChannel:   &orderClient.OrderChannel{},
 		TradeAppClient: &tradeClient.TradeAppClient{},
 		TradeChannel:   &tradeClient.TradeChannel{},
-		Address:        crypto.PubkeyToAddress(privKey.PublicKey),
+		IsBlocked:      false,
+		Mux:            sync.Mutex{},
+	}
+}
+
+type User struct {
+	ID          uuid.UUID
+	PrivateKey  string
+	Address     common.Address
+	Connections map[uuid.UUID]*Connection
+}
+
+func NewUser(privateKey string) *User {
+	_uuid, _ := uuid.NewRandom()
+	privKey, _ := crypto.HexToECDSA(privateKey)
+
+	return &User{
+		ID:          _uuid,
+		PrivateKey:  privateKey,
+		Address:     crypto.PubkeyToAddress(privKey.PublicKey),
+		Connections: make(map[uuid.UUID]*Connection),
 	}
 }
 
 func (u *User) SetupClient(
+	matcherID uuid.UUID,
 	busOrder wire.Bus,
 	busTrade wire.Bus,
 	nodeURL string,
@@ -55,26 +72,49 @@ func (u *User) SetupClient(
 	gavinAddr common.Address,
 ) {
 	_prvKey, _ := crypto.HexToECDSA(u.PrivateKey)
-	u.OrderAppClient = orderClient.SetupClient(busOrder, nodeURL, adjudicator, assets, _prvKey, _orderApp, emptyStake, gavinAddr)
-	u.TradeAppClient = tradeClient.SetupClient(busTrade, nodeURL, adjudicator, assets, _prvKey, _tradeApp, stakes, gavinAddr)
+	u.Connections[matcherID] = NewConnection()
+	u.Connections[matcherID].OrderAppClient = orderClient.SetupClient(busOrder, nodeURL, adjudicator, assets, _prvKey, _orderApp, emptyStake, gavinAddr)
+	u.Connections[matcherID].TradeAppClient = tradeClient.SetupClient(busTrade, nodeURL, adjudicator, assets, _prvKey, _tradeApp, stakes, gavinAddr)
 }
 
-func (u *User) AcceptedChannel() {
-	u.OrderChannel = u.OrderAppClient.AcceptedChannel()
-	u.TradeChannel = u.TradeAppClient.AcceptedChannel()
+func (u *User) AcceptedChannel(matcherID uuid.UUID) {
+	u.Connections[matcherID].OrderChannel = u.Connections[matcherID].OrderAppClient.AcceptedChannel()
+	u.Connections[matcherID].TradeChannel = u.Connections[matcherID].TradeAppClient.AcceptedChannel()
+	u.Connections[matcherID].IsBlocked = false
 }
 
-func (u *User) SendNewOrders(newOrders []*orderApp.Order) {
+func (u *User) AcceptedChannelAll() {
+	for _, v := range u.Connections {
+		v.OrderChannel = v.OrderAppClient.AcceptedChannel()
+		v.TradeChannel = v.TradeAppClient.AcceptedChannel()
+		v.IsBlocked = false
+	}
+}
+
+func (u *User) SendNewOrders(matcherID uuid.UUID, newOrders []*orderApp.Order) {
 	_logger.Info("[%v] Sending new ORDER...\n", u.Address.String()[:5])
-	u.OrderChannel.SendNewOrders(newOrders)
+	u.Connections[matcherID].OrderChannel.SendNewOrders(newOrders)
 }
 
-func (u *User) Settle() {
+func (u *User) Settle(matcherID uuid.UUID) {
 	// u.OrderChannel.Settle()
-	u.TradeChannel.Settle()
+	u.Connections[matcherID].TradeChannel.Settle()
 }
 
-func (u *User) Shutdown() {
-	u.OrderAppClient.Shutdown()
-	u.TradeAppClient.Shutdown()
+func (u *User) SettleAll() {
+	for _, v := range u.Connections {
+		v.TradeChannel.Settle()
+	}
+}
+
+func (u *User) Shutdown(matcherID uuid.UUID) {
+	u.Connections[matcherID].OrderAppClient.Shutdown()
+	u.Connections[matcherID].TradeAppClient.Shutdown()
+}
+
+func (u *User) ShutdownAll() {
+	for _, v := range u.Connections {
+		v.OrderAppClient.Shutdown()
+		v.TradeAppClient.Shutdown()
+	}
 }

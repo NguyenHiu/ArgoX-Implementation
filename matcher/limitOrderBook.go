@@ -62,12 +62,30 @@ func (m *Matcher) matching() {
 			minAmount = askOrder.Data.Amount
 		}
 
+		if leftAmount := m.SuperMatcherInstance.GetLeftAmount(bidOrder.Data.From); leftAmount.Cmp(big.NewInt(-1)) != 0 &&
+			leftAmount.Cmp(bidOrder.Data.Amount) == -1 {
+			m.BidOrders = m.BidOrders[1:]
+			continue
+		}
+		if leftAmount := m.SuperMatcherInstance.GetLeftAmount(askOrder.Data.From); leftAmount.Cmp(big.NewInt(-1)) != 0 &&
+			leftAmount.Cmp(askOrder.Data.Amount) == -1 {
+			m.AskOrders = m.AskOrders[1:]
+			continue
+		}
+
 		_logger.Debug("Matched, amount: %v\n", minAmount)
 		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[bidOrder.Data.From])
 		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[askOrder.Data.From])
 
 		bidOrder.Data.Amount = new(big.Int).Sub(bidOrder.Data.Amount, minAmount)
 		askOrder.Data.Amount = new(big.Int).Sub(askOrder.Data.Amount, minAmount)
+
+		if !m.SuperMatcherInstance.MatchAnOrder(bidOrder.Data.From, bidOrder.Data.Amount) {
+			_logger.Error("invalid action: matching an invalid order (bid)\n")
+		}
+		if !m.SuperMatcherInstance.MatchAnOrder(askOrder.Data.From, askOrder.Data.Amount) {
+			_logger.Error("invalid action: matching an invalid order (ask)\n")
+		}
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
 

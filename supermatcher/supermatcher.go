@@ -24,8 +24,8 @@ type SuperMatcher struct {
 	Address         common.Address
 	Batches         []*Batch
 	Orders          map[uuid.UUID][]*ExpandOrder
-
-	Mutex sync.Mutex
+	MatchedOrders   map[uuid.UUID]*big.Int
+	Mutex           sync.Mutex
 }
 
 func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, chainID int) (*SuperMatcher, error) {
@@ -52,6 +52,7 @@ func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, c
 		Address:         addr,
 		Batches:         []*Batch{},
 		Orders:          make(map[uuid.UUID][]*ExpandOrder),
+		MatchedOrders:   make(map[uuid.UUID]*big.Int),
 	}
 
 	return sm, nil
@@ -121,7 +122,6 @@ func (sm *SuperMatcher) Process() {
 
 	// Send batch to smart contract
 	sm.SendBatch(batch)
-
 }
 
 func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
@@ -154,4 +154,26 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) {
 		_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
 		sm.Batches = append(sm.Batches, batch)
 	}
+}
+
+func (sm *SuperMatcher) GetLeftAmount(id uuid.UUID) *big.Int {
+	_leftAmount, ok := sm.MatchedOrders[id]
+	if ok {
+		return _leftAmount
+	}
+	return big.NewInt(-1)
+}
+
+func (sm *SuperMatcher) MatchAnOrder(id uuid.UUID, leftAmount *big.Int) bool {
+	_leftAmount, ok := sm.MatchedOrders[id]
+	if !ok {
+		sm.MatchedOrders[id] = leftAmount
+		return true
+	}
+
+	if leftAmount.Cmp(_leftAmount) != -1 {
+		return false
+	}
+	sm.MatchedOrders[id] = leftAmount
+	return true
 }
