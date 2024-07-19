@@ -167,12 +167,6 @@ contract Onchain_V1 {
             return;
         }
 
-        // FIXME: There is a case where Matcher sends 'fake orders' that are still accepted,
-        //          This action can be accepted if:
-        //                  + These 'fake orders' are valid orders (having valid signatures)
-        //                  + The cumulative amount of these fake orders is equal to the amount of real orders
-
-        // SUGGEST: Verify batch's signature!
         address decryptedAddr = ECDSA.recover(
             keccak256(
                 abi.encodePacked(

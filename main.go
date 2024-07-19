@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
@@ -17,11 +18,11 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/NguyenHiu/lightning-exchange/worker"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"perun.network/go-perun/backend/ethereum/wallet"
 )
 
 var _logger = logger.NewLogger("Main", logger.Red, logger.Bold)
 
-// TODO: Simulation
 func main() {
 	START_TIME := time.Now()
 
@@ -116,110 +117,114 @@ func main() {
 		PrintBalances(_token, clientNode, matcher.Address)
 	}
 
-	// orders, _ := data.LoadOrders("./data/_orders.json")
-	// for _, order := range orders {
-	// 	// if i > 100 {
-	// 	// 	break
-	// 	// }
-	// 	newOrder := orderApp.NewOrder(
-	// 		big.NewInt(int64(order.Price)),
-	// 		big.NewInt(int64(order.Amount)),
-	// 		order.Side,
-	// 		wallet.AsWalletAddr(alice.Address),
-	// 	)
-	// 	newOrder.Sign(alice.PrivateKey)
-	// 	j := 0
-	// 	_check := time.Now()
-	// 	for j < constants.SEND_TO {
-	// 		if time.Since(_check).Milliseconds() > 500*constants.NO_MATCHER {
-	// 			_logger.Error("Send Order Loop runs forever!\n")
-	// 			break
-	// 		}
-	// 		for _id, _conn := range alice.Connections {
-	// 			_conn.Mux.Lock()
-	// 			isBlocked := _conn.IsBlocked
-	// 			_conn.Mux.Unlock()
-	// 			if !isBlocked {
-	// 				alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
-	// 				_conn.IsBlocked = true
-	// 				go func(conn *user.Connection) {
-	// 					<-time.After(time.Millisecond * 500)
-	// 					conn.Mux.Lock()
-	// 					defer conn.Mux.Unlock()
-	// 					conn.IsBlocked = false
-	// 				}(_conn)
-	// 				j += 1
-	// 				_check = time.Now()
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	/*
-	 *		Random new orders
-	 */
-	_newOrders := []*data.OrderData{}
-	for i := 0; i < 1000; i++ {
-		aliceOrderData := data.RandomOrders(15, 30, 1, 10, 1)
-		_newOrders = append(_newOrders, aliceOrderData...)
-		aliceOrders := FromData(aliceOrderData, alice.PrivateKey)
-		for _, newOrder := range aliceOrders {
-			j := 0
-			_check := time.Now()
-			for j < constants.SEND_TO {
-				if time.Since(_check).Milliseconds() > 500*constants.NO_MATCHER {
-					_logger.Error("Send Order Loop runs forever!\n")
+	orders, _ := data.LoadOrders("./data/_orders.json")
+	for _, order := range orders {
+		newOrder := orderApp.NewOrder(
+			big.NewInt(int64(order.Price)),
+			big.NewInt(int64(order.Amount)),
+			order.Side,
+			wallet.AsWalletAddr(alice.Address),
+		)
+		newOrder.Sign(alice.PrivateKey)
+		j := 0
+		_check := time.Now()
+		for j < constants.SEND_TO {
+			if time.Since(_check).Milliseconds() > 500*constants.NO_MATCHER {
+				_logger.Error("Send Order Loop runs forever!\n")
+				break
+			}
+			for _id, _conn := range alice.Connections {
+				if j >= constants.SEND_TO {
 					break
 				}
-				for _id, _conn := range alice.Connections {
-					_conn.Mux.Lock()
-					isBlocked := _conn.IsBlocked
-					_conn.Mux.Unlock()
-					if !isBlocked {
-						alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
-						_conn.IsBlocked = true
-						go func(conn *user.Connection) {
-							<-time.After(time.Millisecond * 500)
-							conn.Mux.Lock()
-							defer conn.Mux.Unlock()
-							conn.IsBlocked = false
-						}(_conn)
-						j += 1
-						_check = time.Now()
-					}
+
+				_conn.Mux.Lock()
+				isBlocked := _conn.IsBlocked
+				_conn.Mux.Unlock()
+				if !isBlocked {
+					alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
+					_conn.IsBlocked = true
+					go func(conn *user.Connection) {
+						<-time.After(time.Millisecond * 500)
+						conn.Mux.Lock()
+						defer conn.Mux.Unlock()
+						conn.IsBlocked = false
+					}(_conn)
+					j += 1
+					_check = time.Now()
 				}
 			}
 		}
 	}
-	data.SaveOrders(_newOrders, "./data/_orders.json")
+
+	/*
+	 *		Random new orders
+	 */
+	// _newOrders := []*data.OrderData{}
+	// for i := 0; i < 1000; i++ {
+	// 	aliceOrderData := data.RandomOrders(15, 30, 1, 10, 1)
+	// 	_newOrders = append(_newOrders, aliceOrderData...)
+	// 	aliceOrders := FromData(aliceOrderData, alice.PrivateKey)
+	// 	for _, newOrder := range aliceOrders {
+	// 		j := 0
+	// 		_check := time.Now()
+	// 		for j < constants.SEND_TO {
+	// 			if time.Since(_check).Milliseconds() > 500*constants.NO_MATCHER {
+	// 				_logger.Error("Send Order Loop runs forever!\n")
+	// 				break
+	// 			}
+	// 			for _id, _conn := range alice.Connections {
+	// 				_conn.Mux.Lock()
+	// 				isBlocked := _conn.IsBlocked
+	// 				_conn.Mux.Unlock()
+	// 				if !isBlocked {
+	// 					alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
+	// 					_conn.IsBlocked = true
+	// 					go func(conn *user.Connection) {
+	// 						<-time.After(time.Millisecond * 500)
+	// 						conn.Mux.Lock()
+	// 						defer conn.Mux.Unlock()
+	// 						conn.IsBlocked = false
+	// 					}(_conn)
+	// 					j += 1
+	// 					_check = time.Now()
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// data.SaveOrders(_newOrders, "./data/_orders.json")
 
 	_logger.Debug("waiting for end orders\n")
 	<-time.After(time.Second * 10)
 
-	{
-		// Create Final Order
-		order, err := orderApp.EndOrder(constants.KEY_ALICE)
-		if err != nil {
-			_logger.Error("create an end order is fail, err: %v\n", err)
-		}
-		for _id, _ := range alice.Connections {
-			alice.SendNewOrders(_id, []*orderApp.Order{order})
-		}
+	// Create Final Order
+	_finalOrder, err := orderApp.EndOrder(constants.KEY_ALICE)
+	if err != nil {
+		_logger.Error("create an end order is fail, err: %v\n", err)
 	}
-
-	<-time.After(time.Second * 10)
+	for _id := range alice.Connections {
+		alice.SendNewOrders(_id, []*orderApp.Order{_finalOrder})
+	}
+	<-time.After(time.Second * 20)
 
 	// Payout.
 	_logger.Info("Settle\n")
+	_logger.Debug("Settle All\n")
 	alice.SettleAll()
 	for _, matcher := range matchers {
-		matcher.Settle(alice.ID)
+		_logger.Debug("Settle Matcher::%v\n", matcher.Address)
+		if _, _ok := alice.Connections[matcher.ID]; _ok {
+			matcher.Settle(alice.ID)
+		}
 	}
 
 	// Cleanup.
 	_logger.Info("Shutdown\n")
+	_logger.Info("Shutdown All\n")
 	alice.ShutdownAll()
 	for _, matcher := range matchers {
+		_logger.Info("Shutdown Matcher::%v\n", matcher.Address)
 		matcher.Shutdown(alice.ID)
 	}
 

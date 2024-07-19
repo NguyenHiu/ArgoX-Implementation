@@ -16,6 +16,7 @@ import (
 
 var _logger = logger.NewLogger("Listener", logger.Yellow, logger.Bold)
 
+// TODO: Collect Time & Matched Amount & Price Onchain
 type Listener struct {
 	TotalMatchedAmountOnchain *big.Int
 	TotalTimeOnchain          int

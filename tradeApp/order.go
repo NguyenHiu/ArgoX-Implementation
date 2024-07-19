@@ -63,7 +63,7 @@ func NewOrder(price, amount *big.Int, side bool, owner *wallet.Address) *Order {
 	return &Order{
 		OrderID:   orderId,
 		Price:     price,
-		Amount:    amount,
+		Amount:    new(big.Int).Set(amount),
 		Side:      side,
 		Owner:     owner,
 		Signature: []byte{},

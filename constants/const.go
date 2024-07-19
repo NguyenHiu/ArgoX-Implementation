@@ -26,7 +26,7 @@ const (
 	KEY_WORKER         = "e5faea48461ef5a0b78839573073e5a2f579155bf7a4cceb15e49b41963af6a3"
 	SUPER_MATCHER_PORT = 8080
 	NO_MATCHER         = 20
-	SEND_TO            = 5
+	SEND_TO            = 3
 )
 
 const (

@@ -3,8 +3,10 @@ package matcher
 import (
 	"bytes"
 	"encoding/binary"
+	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/tradeApp"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -107,4 +109,20 @@ func (e *ExpandOrder) Encode_Sign() ([]byte, error) {
 	}
 
 	return data.Bytes(), err
+}
+
+// CLARIFY: MAKE CLEAR THE LOGIC BELOW - ARE YOU SURE THAT OriginalOrder.Amount- amount HAVE TO BE EQUAL TO ShadowOrder.Amount?
+func (e *ExpandOrder) IsValidOrder(owner common.Address) bool {
+	amount := new(big.Int)
+	for _, trade := range e.Trades {
+		if e.ShadowOrder.From != e.OriginalOrder.OrderID &&
+			trade.Owner.Cmp(owner) != 0 &&
+			!trade.IsValidSignature() {
+			return false
+		}
+
+		amount.Add(amount, trade.Amount)
+	}
+
+	return new(big.Int).Sub(e.OriginalOrder.Amount, amount).Cmp(e.ShadowOrder.Amount) == 0
 }

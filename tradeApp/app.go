@@ -203,7 +203,7 @@ func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.Sta
 				amount := new(big.Int).Set(toData.OrdersMapping[v.BidOrder].Amount)
 				// _logger.Debug("amount: %v\n", amount)
 				for _, trade := range toData.BidToTrade[v.BidOrder] {
-					amount = new(big.Int).Sub(amount, trade.Amount)
+					amount.Sub(amount, trade.Amount)
 				}
 				if amount.Cmp(new(big.Int)) == -1 {
 					_logger.Debug("bid order's id: %v\n", v.BidOrder.String())
@@ -217,7 +217,7 @@ func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.Sta
 			if ok2 {
 				amount := new(big.Int).Set(toData.OrdersMapping[v.AskOrder].Amount)
 				for _, trade := range toData.BidToTrade[v.AskOrder] {
-					amount = new(big.Int).Sub(amount, trade.Amount)
+					amount.Sub(amount, trade.Amount)
 				}
 				if amount.Cmp(new(big.Int)) == -1 {
 					_logger.Debug("ask order's id: %v\n", v.AskOrder.String())

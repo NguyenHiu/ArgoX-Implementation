@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"log"
 	"math/big"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
@@ -57,16 +58,19 @@ func (m *Matcher) matching() {
 		bidOrder := m.BidOrders[0]
 		askOrder := m.AskOrders[0]
 
-		minAmount := bidOrder.Data.Amount
+		// Get minimize amount among bid & ask order
+		minAmount := new(big.Int).Set(bidOrder.Data.Amount)
 		if minAmount.Cmp(askOrder.Data.Amount) == 1 {
-			minAmount = askOrder.Data.Amount
+			minAmount = new(big.Int).Set(askOrder.Data.Amount)
 		}
 
+		// Check if bidOrder is valid and didnt be matched
 		if leftAmount := m.SuperMatcherInstance.GetLeftAmount(bidOrder.Data.From); leftAmount.Cmp(big.NewInt(-1)) != 0 &&
 			leftAmount.Cmp(bidOrder.Data.Amount) == -1 {
 			m.BidOrders = m.BidOrders[1:]
 			continue
 		}
+		// Check if askOrder is valid and didnt be matched
 		if leftAmount := m.SuperMatcherInstance.GetLeftAmount(askOrder.Data.From); leftAmount.Cmp(big.NewInt(-1)) != 0 &&
 			leftAmount.Cmp(askOrder.Data.Amount) == -1 {
 			m.AskOrders = m.AskOrders[1:]
@@ -82,8 +86,25 @@ func (m *Matcher) matching() {
 		m.TotalTimeLocal += m.NoOrder - m.CreateTime[bidOrder.Data.From]
 		m.TotalTimeLocal += m.NoOrder - m.CreateTime[askOrder.Data.From]
 
-		bidOrder.Data.Amount = new(big.Int).Sub(bidOrder.Data.Amount, minAmount)
-		askOrder.Data.Amount = new(big.Int).Sub(askOrder.Data.Amount, minAmount)
+		_logger.Debug("minAmount: %v\n", minAmount)
+
+		_bidOrigin := new(big.Int).Set(bidOrder.Data.Amount)
+		bidOrder.Data.Amount = bidOrder.Data.Amount.Sub(bidOrder.Data.Amount, minAmount)
+		if bidOrder.Data.Amount.Cmp(_bidOrigin) != -1 {
+			_logger.Debug("Some stupid things happend here!\n")
+			log.Fatal("STUPID STUPID")
+		}
+		_logger.Debug("minAmount: %v\n", minAmount)
+
+		_askOrigin := new(big.Int).Set(askOrder.Data.Amount)
+		askOrder.Data.Amount.Sub(askOrder.Data.Amount, minAmount)
+		if askOrder.Data.Amount.Cmp(_askOrigin) != -1 {
+			_logger.Debug("_askOrigin: %v\n", _askOrigin)
+			_logger.Debug("minAmount: %v\n", minAmount)
+			_logger.Debug("askOrder: %v\n", askOrder.Data.Amount)
+			_logger.Debug("Some stupid things happend here! [ASK]\n")
+			log.Fatal("STUPID STUPID")
+		}
 
 		if !m.SuperMatcherInstance.MatchAnOrder(bidOrder.Data.From, bidOrder.Data.Amount) {
 			_logger.Error("invalid action: matching an invalid order (bid)\n")

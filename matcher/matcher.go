@@ -220,6 +220,10 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for orders := range m.ClientConfigs[userID].OrderAppClient.TriggerChannel {
 		for _, order := range orders {
+			if _, ok := m.Orders[order.OrderID]; ok {
+				log.Fatal("receiving the same order\n")
+			}
+
 			if order.OrderID == tradeApp.EndID {
 				endTrade, _ := tradeApp.EndTrade(m.PrivateKey)
 				m.ClientConfigs[userID].TradeChannel.SendNewTrades([]*tradeApp.Trade{endTrade}, nil, nil, false)
@@ -230,7 +234,7 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			if order.Side == constants.ASK {
 				_side = "ask"
 			}
-			_logger.Info("[%v::%vv] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
+			_logger.Info("[%v::%v] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
 
 			_order := order.Clone()
 			m.Orders[_order.OrderID] = &tradeApp.Order{
@@ -243,7 +247,7 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			}
 
 			__order := order.Clone()
-			m.addOrder(&MatcherOrder{
+			_newOrder := &MatcherOrder{
 				Data: &ShadowOrder{
 					Price:  __order.Price,
 					Amount: __order.Amount,
@@ -251,8 +255,21 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 					From:   __order.OrderID,
 				},
 				Owner: userID,
-			})
+			}
 
+			if _newOrder.Data.Amount.Cmp(order.Amount) != 0 {
+				_logger.Debug("Damn, it;s fking wrong\n")
+				log.Fatal("SUPER ERROR")
+			}
+
+			if _newOrder.Data.From.String() != order.OrderID.String() {
+				_logger.Debug("Damn, it;s fking wrong (ID) \n")
+				log.Fatal("SUPER ERROR")
+			}
+
+			m.addOrder(_newOrder)
+
+			// Used to export orders to file
 			m.OrderStorage = append(m.OrderStorage, &data.OrderData{
 				Price:  int(__order.Price.Int64()),
 				Amount: int(__order.Amount.Int64()),
@@ -263,12 +280,17 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 }
 
 func (m *Matcher) Settle(userID uuid.UUID) {
-	m.ClientConfigs[userID].TradeChannel.Settle()
-	m.ClientConfigs[userID].OrderChannel.Settle()
+	if _config, _ok := m.ClientConfigs[userID]; _ok {
+		_config.TradeChannel.Settle()
+		_config.OrderChannel.Settle()
+	}
 }
 
 func (m *Matcher) Shutdown(userID uuid.UUID) {
-	m.ClientConfigs[userID].TradeAppClient.Shutdown()
+	if _config, _ok := m.ClientConfigs[userID]; _ok {
+		_config.TradeAppClient.Shutdown()
+		_config.OrderAppClient.Shutdown()
+	}
 }
 
 func (m *Matcher) ExportOrdersData(filename string) error {

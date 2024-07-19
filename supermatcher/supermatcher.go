@@ -63,6 +63,7 @@ func (sm *SuperMatcher) isExists(order *ExpandOrder) bool {
 	if !ok {
 		return false
 	}
+
 	for _, expandOrder := range expandOrders {
 		if expandOrder.Equal(order) {
 			return true
@@ -72,7 +73,11 @@ func (sm *SuperMatcher) isExists(order *ExpandOrder) bool {
 }
 
 func (sm *SuperMatcher) addOrder(order *ExpandOrder) {
-	sm.Orders[order.OriginalOrder.OrderID] = append(sm.Orders[order.OriginalOrder.OrderID], order)
+	sm.Orders[order.OriginalOrder.OrderID] = append(sm.Orders[order.OriginalOrder.OrderID], &ExpandOrder{
+		ShadowOrder:   order.ShadowOrder.Clone(),
+		Trades:        order.Trades,
+		OriginalOrder: order.OriginalOrder,
+	})
 }
 
 func (sm *SuperMatcher) Process() {
@@ -91,33 +96,6 @@ func (sm *SuperMatcher) Process() {
 
 	// The batch is already validated when being appended to the sm.Batches
 
-	// Filter orders in the batch
-	validOrders := []*ExpandOrder{}
-	for idx, order := range batch.Orders {
-		if sm.isExists(order) {
-			_logger.Debug("Order at %v has already existed\n", idx)
-		} else {
-			sm.addOrder(order)
-			validOrders = append(validOrders, order)
-		}
-	}
-
-	// If the batch is empty, stop
-	if len(validOrders) == 0 {
-		_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
-		return
-	}
-
-	// Update `amount` & `orders` of the batch
-	if len(validOrders) != len(batch.Orders) {
-		_amount := &big.Int{}
-		for _, order := range validOrders {
-			_amount = new(big.Int).Add(_amount, order.ShadowOrder.Amount)
-		}
-		batch.Amount = _amount
-		batch.Orders = validOrders
-	}
-
 	// _logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
 
 	// Send batch to smart contract
@@ -127,19 +105,19 @@ func (sm *SuperMatcher) Process() {
 func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 	// 1. valid owner: owner is a matcher & the signature is valid
 	if !sm.isMatcher(batch.Owner) {
-		_logger.Debug("Invalid Matcher\n")
+		_logger.Debug("Batch::%v (Invalid Matcher)\n", batch.BatchID)
 		return false
 	}
 
 	if !batch.IsValidSignature() {
-		_logger.Debug("Invalid Batch's Signature\n")
+		_logger.Debug("Batch::%v (Invalid Batch's Signature)\n", batch.BatchID)
 		return false
 	}
 
 	// 2. check signatures of orders in the batch
 	for idx, order := range batch.Orders {
 		if !order.IsValidOrder(batch.Owner) {
-			_logger.Debug("Invalid Order at %v \n", idx)
+			_logger.Debug("Batch::%v (Invalid Order at %v) \n", batch.BatchID, idx)
 			return false
 		}
 	}
@@ -147,19 +125,50 @@ func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 	return true
 }
 
-func (sm *SuperMatcher) AddBatch(batch *Batch) {
+// Return values:
+//   - "OK"
+//   - "REMOVE"
+//   - "RESIGN"
+//   - "INVALID_BATCH"
+func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 	if sm.CheckValidBatch(batch) {
 		sm.Mutex.Lock()
 		defer sm.Mutex.Unlock()
 		_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
+
+		// Filter orders in the batch
+		validOrders := []*ExpandOrder{}
+		for idx, order := range batch.Orders {
+			if sm.isExists(order) {
+				_logger.Debug("Order::%v at %v has already existed (total: %v)\n", order.OriginalOrder.OrderID.String(), idx, len(batch.Orders))
+			} else {
+				sm.addOrder(order)
+				validOrders = append(validOrders, order)
+			}
+		}
+
+		// If the batch is empty, stop
+		if len(validOrders) == 0 {
+			_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
+			return "REMOVE", nil
+		}
+
+		// Update `amount` & `orders` of the batch
+		if len(validOrders) != len(batch.Orders) {
+			return "RESIGN", validOrders
+		}
+
 		sm.Batches = append(sm.Batches, batch)
+		return "OK", nil
 	}
+
+	return "INVALID_BATCH", nil
 }
 
 func (sm *SuperMatcher) GetLeftAmount(id uuid.UUID) *big.Int {
 	_leftAmount, ok := sm.MatchedOrders[id]
 	if ok {
-		return _leftAmount
+		return new(big.Int).Set(_leftAmount)
 	}
 	return big.NewInt(-1)
 }
@@ -167,13 +176,13 @@ func (sm *SuperMatcher) GetLeftAmount(id uuid.UUID) *big.Int {
 func (sm *SuperMatcher) MatchAnOrder(id uuid.UUID, leftAmount *big.Int) bool {
 	_leftAmount, ok := sm.MatchedOrders[id]
 	if !ok {
-		sm.MatchedOrders[id] = leftAmount
+		sm.MatchedOrders[id] = new(big.Int).Set(leftAmount)
 		return true
 	}
 
 	if leftAmount.Cmp(_leftAmount) != -1 {
 		return false
 	}
-	sm.MatchedOrders[id] = leftAmount
+	sm.MatchedOrders[id] = new(big.Int).Set(leftAmount)
 	return true
 }

@@ -104,6 +104,7 @@ func (u *User) Settle(matcherID uuid.UUID) {
 func (u *User) SettleAll() {
 	for _, v := range u.Connections {
 		v.TradeChannel.Settle()
+		v.OrderChannel.Settle()
 	}
 }
 
