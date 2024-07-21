@@ -97,8 +97,8 @@ func (u *User) SendNewOrders(matcherID uuid.UUID, newOrders []*orderApp.Order) {
 }
 
 func (u *User) Settle(matcherID uuid.UUID) {
-	// u.OrderChannel.Settle()
 	u.Connections[matcherID].TradeChannel.Settle()
+	u.Connections[matcherID].OrderChannel.Settle()
 }
 
 func (u *User) SettleAll() {
@@ -119,3 +119,22 @@ func (u *User) ShutdownAll() {
 		v.TradeAppClient.Shutdown()
 	}
 }
+
+// func (u *User) prepareNonceAndGasPrice(value float64, gasLimit int) {
+// 	nodeClient, _ := ethclient.Dial(constants.CHAIN_URL)
+
+// 	nonce, err := nodeClient.PendingNonceAt(context.Background(), u.Address)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	gasPrice, err := nodeClient.SuggestGasPrice(context.Background())
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	m.Auth.Nonce = big.NewInt(int64(nonce))
+// 	m.Auth.GasPrice = gasPrice
+// 	m.Auth.Value = orderClient.EthToWei(big.NewFloat(float64(value)))
+// 	m.Auth.GasLimit = uint64(gasLimit)
+// }

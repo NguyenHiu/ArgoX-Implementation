@@ -1,0 +1,11 @@
+{
+    "AliceGas": 935086,
+    "SuperMatcherGas": 126301255,
+    "ReporterGas": 0,
+    "WorkerGas": 9365868,
+    "MatcherGas": 17761438,
+    "LocalMatchedAmount": 21644,
+    "OnchainMatchedAmount": 13428,
+    "LocalMatchTime": 369,
+    "OnchainMatchTime": 395
+}

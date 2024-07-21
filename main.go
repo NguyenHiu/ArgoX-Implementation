@@ -22,6 +22,7 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/worker"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/google/uuid"
 	"perun.network/go-perun/backend/ethereum/wallet"
 )
 
@@ -173,6 +174,7 @@ func main() {
 		// Run existed orders in `filename` file
 		orders, _ := data.LoadOrders(_FILENAME_)
 		for _, order := range orders {
+
 			newOrder := orderApp.NewOrder(
 				big.NewInt(int64(order.Price)),
 				big.NewInt(int64(order.Amount)),
@@ -182,6 +184,7 @@ func main() {
 			newOrder.Sign(alice.PrivateKey)
 			j := 0
 			_check := time.Now()
+			_isSent := make(map[uuid.UUID]bool)
 			for j < constants.SEND_TO {
 				if time.Since(_check).Milliseconds() > 500*(int64(constants.NO_MATCHER+2)) {
 					_logger.Error("Send Order Loop runs forever!\n")
@@ -196,10 +199,16 @@ func main() {
 					isBlocked := _conn.IsBlocked
 					_conn.Mux.Unlock()
 					if !isBlocked {
+						if _, _ok := _isSent[_id]; _ok {
+							continue
+						} else {
+							_isSent[_id] = true
+						}
+
 						alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
 						_conn.IsBlocked = true
 						go func(conn *user.Connection) {
-							<-time.After(time.Millisecond * 500)
+							<-time.After(time.Millisecond * 50)
 							conn.Mux.Lock()
 							defer conn.Mux.Unlock()
 							conn.IsBlocked = false
@@ -237,7 +246,7 @@ func main() {
 							alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
 							_conn.IsBlocked = true
 							go func(conn *user.Connection) {
-								<-time.After(time.Millisecond * 500)
+								<-time.After(time.Millisecond * 50)
 								conn.Mux.Lock()
 								defer conn.Mux.Unlock()
 								conn.IsBlocked = false
