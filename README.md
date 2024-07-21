@@ -1,13 +1,19 @@
 # lightning-exchange-perun 
 
-## Run ganache 
+## How to run `run.sh` script
+1. Access to `data` folder
+2. Run the script with `./run.sh`
+3. Waiting for the results
+
+## How to run manually
+### Run ganache 
 ```
 ganache -a 200 -m '' -e 99999999999 --chain.chainId <CHAIN ID> --p <PORT>
 ```
 <b>Example</b>, `ganache -a 200 -m '' -e 99999999999 --chain.chainId 1337 --p 8545>`
 
 
-## Run protocol
+### Run protocol
 ```
 go run . <PORT> <CHAIN ID> <NUMBER OF MATCHERS> <SEND TO> run <FILE TO LOAD ORDERS> <FOLDER TO SAVE RESULTS>
 ```
