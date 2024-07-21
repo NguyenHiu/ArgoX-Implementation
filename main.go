@@ -276,21 +276,21 @@ func main() {
 		matcher.IsGetPriceCurve = false
 	}
 
-	// Payout.
-	_logger.Info("Settle\n")
-	for _, matcher := range matchers {
-		if _, _ok := alice.Connections[matcher.ID]; _ok {
-			alice.Settle(matcher.ID)
-			matcher.Settle(alice.ID)
-		}
-	}
+	// // Payout.
+	// _logger.Info("Settle\n")
+	// for _, matcher := range matchers {
+	// 	if _, _ok := alice.Connections[matcher.ID]; _ok {
+	// 		alice.Settle(matcher.ID)
+	// 		matcher.Settle(alice.ID)
+	// 	}
+	// }
 
-	// Cleanup.
-	_logger.Info("Shutdown\n")
-	for _, matcher := range matchers {
-		alice.Shutdown(matcher.ID)
-		matcher.Shutdown(alice.ID)
-	}
+	// // Cleanup.
+	// _logger.Info("Shutdown\n")
+	// for _, matcher := range matchers {
+	// 	alice.Shutdown(matcher.ID)
+	// 	matcher.Shutdown(alice.ID)
+	// }
 
 	/// Export results
 	// Match Amount
