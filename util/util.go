@@ -88,7 +88,7 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 		log.Fatal(err)
 	}
 
-	client, err := ethclient.Dial("http://127.0.0.1:8545")
+	client, err := ethclient.Dial(constants.CHAIN_URL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func mintGavinToken(tokenInstance *token.Token, onchainAddr common.Address, clie
 	if err != nil {
 		log.Fatal(err)
 	}
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(1337))
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(constants.CHAIN_ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func DepositETH(onchainInstance *onchain.Onchain, _client *ethclient.Client, pri
 	if err != nil {
 		log.Fatal(err)
 	}
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(1337))
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(constants.CHAIN_ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -236,9 +236,12 @@ func prepareNonceAndGasPrice(auth *bind.TransactOpts, client *ethclient.Client, 
 	auth.GasLimit = uint64(300000)
 }
 
-func CalculateTotalUsedGas(addr common.Address) int {
-	totalGas := 0
+func CalculateTotalUsedGas(addr []common.Address) map[common.Address]int {
 	_client, _ := ethclient.Dial(constants.CHAIN_URL)
+	totalGas := make(map[common.Address]int)
+	for _, _a := range addr {
+		totalGas[_a] = 0
+	}
 
 	for i := new(big.Int); ; i.Add(i, big.NewInt(1)) {
 		block, err := _client.BlockByNumber(context.Background(), i)
@@ -246,13 +249,13 @@ func CalculateTotalUsedGas(addr common.Address) int {
 			return totalGas
 		}
 		for _, tx := range block.Transactions() {
-			if from, err := types.Sender(types.NewLondonSigner(big.NewInt(1337)), tx); err == nil {
-				if from.Cmp(addr) == 0 {
+			if from, err := types.Sender(types.NewLondonSigner(big.NewInt(constants.CHAIN_ID)), tx); err == nil {
+				if _, _ok := totalGas[from]; _ok {
 					receipt, err := _client.TransactionReceipt(context.Background(), tx.Hash())
 					if err != nil {
 						log.Fatal(err)
 					}
-					totalGas += int(receipt.GasUsed)
+					totalGas[from] += int(receipt.GasUsed)
 				}
 			}
 		}

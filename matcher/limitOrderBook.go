@@ -1,8 +1,8 @@
 package matcher
 
 import (
-	"log"
 	"math/big"
+	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/tradeApp"
@@ -13,11 +13,6 @@ import (
 // bid: 1 --> 2
 // ask: 2 --> 1
 func (m *Matcher) addOrder(order *MatcherOrder) {
-	/* MATCHING TIME */
-	m.NoOrder += 1
-	m.CreateTime[order.Data.From] = m.NoOrder
-	/* MATCHING TIME */
-
 	if order.Data.Side == constants.BID {
 		m.BidOrders = addAccordingTheOrder(order, m.BidOrders)
 	} else {
@@ -79,32 +74,15 @@ func (m *Matcher) matching() {
 
 		_logger.Debug("Matched, amount: %v\n", minAmount)
 		_logger.Debug("Matched, amount: %v\n", minAmount)
-		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[bidOrder.Data.From])
-		_logger.Debug("Time: %v\n", m.NoOrder-m.CreateTime[askOrder.Data.From])
+		_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[bidOrder.Data.From])
+		_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
-		m.TotalTimeLocal += m.NoOrder - m.CreateTime[bidOrder.Data.From]
-		m.TotalTimeLocal += m.NoOrder - m.CreateTime[askOrder.Data.From]
+		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[bidOrder.Data.From]
+		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
 
-		_logger.Debug("minAmount: %v\n", minAmount)
-
-		_bidOrigin := new(big.Int).Set(bidOrder.Data.Amount)
-		bidOrder.Data.Amount = bidOrder.Data.Amount.Sub(bidOrder.Data.Amount, minAmount)
-		if bidOrder.Data.Amount.Cmp(_bidOrigin) != -1 {
-			_logger.Debug("Some stupid things happend here!\n")
-			log.Fatal("STUPID STUPID")
-		}
-		_logger.Debug("minAmount: %v\n", minAmount)
-
-		_askOrigin := new(big.Int).Set(askOrder.Data.Amount)
+		bidOrder.Data.Amount.Sub(bidOrder.Data.Amount, minAmount)
 		askOrder.Data.Amount.Sub(askOrder.Data.Amount, minAmount)
-		if askOrder.Data.Amount.Cmp(_askOrigin) != -1 {
-			_logger.Debug("_askOrigin: %v\n", _askOrigin)
-			_logger.Debug("minAmount: %v\n", minAmount)
-			_logger.Debug("askOrder: %v\n", askOrder.Data.Amount)
-			_logger.Debug("Some stupid things happend here! [ASK]\n")
-			log.Fatal("STUPID STUPID")
-		}
 
 		if !m.SuperMatcherInstance.MatchAnOrder(bidOrder.Data.From, bidOrder.Data.Amount) {
 			_logger.Error("invalid action: matching an invalid order (bid)\n")
@@ -114,7 +92,8 @@ func (m *Matcher) matching() {
 		}
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
-		m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
+		// m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
+		m.CurrentPrice = new(big.Int).Set(matchPrice)
 
 		trade := m.NewTrade(bidOrder.Data.From, askOrder.Data.From, matchPrice, minAmount)
 
@@ -131,7 +110,6 @@ func (m *Matcher) matching() {
 		m.ClientConfigs[askOrder.Owner].TradeChannel.SendNewTrades([]*tradeApp.Trade{trade}, _bidOrder, _askOrder, false)
 
 		if bidOrder.Data.Amount.Cmp(new(big.Int)) == 0 {
-			// m.BidOrders = m.BidOrders[1:]
 			for i, _bo := range m.BidOrders {
 				if _bo.Data.Equal(bidOrder.Data) {
 					m.BidOrders = append(m.BidOrders[:i], m.BidOrders[i+1:]...)
@@ -141,7 +119,6 @@ func (m *Matcher) matching() {
 			}
 		}
 		if askOrder.Data.Amount.Cmp(new(big.Int)) == 0 {
-			// m.AskOrders = m.AskOrders[1:]
 			for i, _ao := range m.AskOrders {
 				if _ao.Data.Equal(askOrder.Data) {
 					m.AskOrders = append(m.AskOrders[:i], m.AskOrders[i+1:]...)
@@ -150,7 +127,6 @@ func (m *Matcher) matching() {
 				}
 			}
 		}
-		// <-time.After(time.Millisecond * 500)
 	}
 }
 

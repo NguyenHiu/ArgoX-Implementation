@@ -15,9 +15,12 @@ const (
 	NO_BATCHES_EACH_TIME = 1
 )
 
+var CHAIN_URL string
+var CHAIN_ID int64
+var NO_MATCHER int
+var SEND_TO int
+
 const (
-	CHAIN_URL          = "ws://127.0.0.1:8545"
-	CHAIN_ID           = 1337
 	KEY_DEPLOYER       = "abf82ff96b463e9d82b83cb9bb450fe87e6166d4db6d7021d0c71d7e960d5abe"
 	KEY_ALICE          = "2d7aaa9b78d759813448eb26483284cd5e4344a17dede2ab7f062f0757113a28"
 	KEY_BOB            = "0e5c6904f09186a0cfe945da201e9d9f0443e07d9e795a9d26cc5cbb882874ac"
@@ -25,8 +28,6 @@ const (
 	KEY_REPORTER       = "949dbd0607598c41478b32c27da65ab550d54246922fa8978a8c1b9e901e06a6"
 	KEY_WORKER         = "e5faea48461ef5a0b78839573073e5a2f579155bf7a4cceb15e49b41963af6a3"
 	SUPER_MATCHER_PORT = 8080
-	NO_MATCHER         = 20
-	SEND_TO            = 3
 )
 
 const (

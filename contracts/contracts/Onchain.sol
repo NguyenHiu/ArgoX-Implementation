@@ -51,12 +51,6 @@ contract Onchain {
         _owner = msg.sender;
     }
 
-    /** MATCHING TIME */
-    uint256 noBatches;
-    mapping(bytes16 => uint256) BatchCreatedTime;
-    event MatchTimestamp(uint256);
-    /** MATCHING TIME */
-
     /**
      * Events
      */
@@ -68,6 +62,10 @@ contract Onchain {
     event InvalidOrder(bytes16);
     event InvalidBatch(bytes16);
     event RevertBatch(bytes16);
+    // Statistical
+    event BatchTimestamp(bytes16, uint256);
+    event BatchMatchAmount(uint256);
+    event MatchedPrice(uint256);
     // --- Log Events ---
     event LogString(string);
     event LogBytes32(bytes32);
@@ -166,9 +164,8 @@ contract Onchain {
         bytes16 batchID,
         Order[] memory _ords
     ) public isPendingBatch(batchID) isBatchOwner(batchID) {
-        /** MATCHING TIME */
-        emit MatchTimestamp(noBatches - BatchCreatedTime[batchID]);
-        /** MATCHING TIME */
+        // Statistical
+        emit BatchTimestamp(batchID, block.timestamp);
 
         uint256 _temp = 0;
         bytes memory ordersHash;
@@ -293,10 +290,8 @@ contract Onchain {
         address owner,
         bytes memory sign
     ) public {
-        /** MATCHING TIME */
-        noBatches += 1;
-        BatchCreatedTime[batchID] = noBatches;
-        /** MATCHING TIME */
+        // Statistical
+        emit BatchTimestamp(batchID, block.timestamp);
 
         emit AcceptBatch(batchID, price, amount, side);
         Batch memory _nb = Batch(batchID, price, amount, side, owner, sign, 0);
@@ -323,6 +318,10 @@ contract Onchain {
             bidBatch.price >= askBatch.price &&
             bidBatch.amount == askBatch.amount
         ) {
+            // Statistical
+            emit BatchMatchAmount(bidBatch.amount);
+            emit MatchedPrice((bidBatch.price + askBatch.price) / 2);
+
             _batchMapping[bidBatchID].time = block.timestamp;
             _batchMapping[askBatchID].time = block.timestamp;
             _tradeMapping[bidBatch.batchID] = askBatch.batchID;

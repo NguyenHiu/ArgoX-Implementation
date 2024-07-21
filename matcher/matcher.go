@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
@@ -72,11 +73,12 @@ type Matcher struct {
 	OrderStorage []*data.OrderData
 
 	/* MATCHING ANALYSIS */
-	NoOrder                 int64
 	CreateTime              map[uuid.UUID]int64
 	TotalTimeLocal          int64
 	TotalMatchedAmountLocal *big.Int
 	PriceCurveLocal         []*big.Int
+	CurrentPrice            *big.Int
+	IsGetPriceCurve         bool
 	/* MATCHING ANALYSIS */
 
 }
@@ -146,11 +148,12 @@ func NewMatcher(
 		OrderStorage: make([]*data.OrderData, 0),
 
 		/* MATCHING ANALYSIS */
-		NoOrder:                 0,
 		CreateTime:              make(map[uuid.UUID]int64),
 		TotalTimeLocal:          0,
 		TotalMatchedAmountLocal: new(big.Int),
 		PriceCurveLocal:         []*big.Int{},
+		CurrentPrice:            new(big.Int),
+		IsGetPriceCurve:         false,
 		/* MATCHING ANALYSIS */
 	}
 }
@@ -175,6 +178,15 @@ func (m *Matcher) NewTrade(bid, ask uuid.UUID, price, amount *big.Int) *tradeApp
 	m.mappingAskToTrade[ask] = append(m.mappingAskToTrade[ask], executedtrade)
 
 	return executedtrade
+}
+
+func (m *Matcher) GetPriceCurve() {
+	ticker := time.NewTicker(1 * time.Second)
+	for range ticker.C {
+		if m.IsGetPriceCurve {
+			m.PriceCurveLocal = append(m.PriceCurveLocal, m.CurrentPrice)
+		}
+	}
 }
 
 // Create 2 channels: one for receiving orders, one for sending message
@@ -235,6 +247,8 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 				_side = "ask"
 			}
 			_logger.Info("[%v::%v] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
+
+			m.CreateTime[order.OrderID] = time.Now().Unix()
 
 			_order := order.Clone()
 			m.Orders[_order.OrderID] = &tradeApp.Order{

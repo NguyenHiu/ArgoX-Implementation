@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
@@ -60,7 +62,7 @@ func SetupSuperMatcher(onchainAddr common.Address, client *ethclient.Client, pri
 		log.Fatal(err)
 	}
 
-	sm, err := supermatcher.NewSuperMatcher(onchainInstance, privateKeyHex, port, constants.CHAIN_ID)
+	sm, err := supermatcher.NewSuperMatcher(onchainInstance, privateKeyHex, port, int(constants.CHAIN_ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,4 +106,67 @@ func PrintBalances(tokenAddr common.Address, clientNode bind.ContractBackend, ad
 		// _logger.Info("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
 		fmt.Printf("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
 	}
+}
+
+func ExportPriceCurve(priceCurve []*big.Int, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("cannot open file: %v", filename)
+	}
+	defer file.Close()
+
+	enc := json.NewEncoder(file)
+	if err := enc.Encode(&priceCurve); err != nil {
+		return fmt.Errorf("cannot write data into file: %v", filename)
+	}
+
+	return nil
+}
+
+func ExportRunLogs(
+	aliceGas,
+	smGas,
+	rGas,
+	wGas,
+	mGas int,
+	localMatchedAmount,
+	onchainMatchedAmount *big.Int,
+	localMatchTime,
+	onchainMatchTime int,
+	filename string,
+) error {
+	data := struct {
+		AliceGas             int
+		SuperMatcherGas      int
+		ReporterGas          int
+		WorkerGas            int
+		MatcherGas           int
+		LocalMatchedAmount   *big.Int
+		OnchainMatchedAmount *big.Int
+		LocalMatchTime       int
+		OnchainMatchTime     int
+	}{
+		AliceGas:             aliceGas,
+		SuperMatcherGas:      smGas,
+		ReporterGas:          rGas,
+		WorkerGas:            wGas,
+		MatcherGas:           mGas,
+		LocalMatchedAmount:   localMatchedAmount,
+		OnchainMatchedAmount: onchainMatchedAmount,
+		LocalMatchTime:       localMatchTime,
+		OnchainMatchTime:     onchainMatchTime,
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("cannot open file: %v", filename)
+	}
+	defer file.Close()
+
+	enc := json.NewEncoder(file)
+	if err := enc.Encode(&data); err != nil {
+		return fmt.Errorf("cannot write data into file: %v", filename)
+	}
+
+	return nil
 }

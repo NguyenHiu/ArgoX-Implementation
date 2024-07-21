@@ -29,7 +29,7 @@ type Reporter struct {
 	Mux             sync.Mutex
 }
 
-func NewReporter(onchainAdrr common.Address, prvateKeyHex string, chainID int) (*Reporter, error) {
+func NewReporter(onchainAdrr common.Address, prvateKeyHex string, chainID int64) (*Reporter, error) {
 
 	client, err := ethclient.Dial(constants.CHAIN_URL)
 	if err != nil {
@@ -44,7 +44,7 @@ func NewReporter(onchainAdrr common.Address, prvateKeyHex string, chainID int) (
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(_prvkey, big.NewInt(int64(chainID)))
+	auth, err := bind.NewKeyedTransactorWithChainID(_prvkey, big.NewInt(chainID))
 	if err != nil {
 		return nil, err
 	}

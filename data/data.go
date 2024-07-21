@@ -6,9 +6,11 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 )
 
-const DATA_PATH = "./data/data.json"
+var _data_id, _ = uuid.NewRandom()
+var DATA_PATH = fmt.Sprintf("./data/storage/data-%v.json", _data_id)
 
 func loadData() (map[string]string, error) {
 	file, err := os.Open(DATA_PATH)

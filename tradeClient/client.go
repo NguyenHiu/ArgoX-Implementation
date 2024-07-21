@@ -52,7 +52,7 @@ func SetupClient(
 		w,
 		acc,
 		nodeURL,
-		constants.CHAIN_ID,
+		uint64(constants.CHAIN_ID),
 		adjudicator,
 		assets,
 		app,

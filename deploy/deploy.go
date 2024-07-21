@@ -8,8 +8,8 @@ import (
 
 func DeployContracts() {
 	contractsMap := make(map[string]string)
-	token, onchain := util.DeployCustomSC(constants.CHAIN_URL, constants.CHAIN_ID, constants.KEY_DEPLOYER)
-	adj, assetHolders, appAddr := util.DeployPerunContracts(constants.CHAIN_URL, constants.CHAIN_ID, constants.KEY_DEPLOYER, token)
+	token, onchain := util.DeployCustomSC(constants.CHAIN_URL, uint64(constants.CHAIN_ID), constants.KEY_DEPLOYER)
+	adj, assetHolders, appAddr := util.DeployPerunContracts(constants.CHAIN_URL, uint64(constants.CHAIN_ID), constants.KEY_DEPLOYER, token)
 
 	contractsMap["token"] = token.String()
 	contractsMap["onchain"] = onchain.String()
