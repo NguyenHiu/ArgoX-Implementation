@@ -1,11 +1,1 @@
-{
-    "AliceGas": 1728098,
-    "SuperMatcherGas": 101922227,
-    "ReporterGas": 0,
-    "WorkerGas": 3838440,
-    "MatcherGas": 9651886,
-    "LocalMatchedAmount": 29000,
-    "OnchainMatchedAmount": 5800,
-    "LocalMatchTime": 481,
-    "OnchainMatchTime": 131
-}
+{"AliceGas":1745270,"SuperMatcherGas":106335602,"ReporterGas":0,"WorkerGas":4913256,"MatcherGas":11387028,"LocalMatchedAmount":26166,"OnchainMatchedAmount":6602,"LocalMatchTime":267,"OnchainMatchTime":89}

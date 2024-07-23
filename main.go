@@ -208,7 +208,7 @@ func main() {
 						alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
 						_conn.IsBlocked = true
 						go func(conn *user.Connection) {
-							<-time.After(time.Millisecond * 50)
+							<-time.After(time.Millisecond * 100)
 							conn.Mux.Lock()
 							defer conn.Mux.Unlock()
 							conn.IsBlocked = false
@@ -246,7 +246,7 @@ func main() {
 							alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
 							_conn.IsBlocked = true
 							go func(conn *user.Connection) {
-								<-time.After(time.Millisecond * 50)
+								<-time.After(time.Millisecond * 100)
 								conn.Mux.Lock()
 								defer conn.Mux.Unlock()
 								conn.IsBlocked = false
