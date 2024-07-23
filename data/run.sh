@@ -9,6 +9,8 @@ cd ..
 cleanup() {
   echo "Cleaning up..."
   kill $ganache_pid 2>/dev/null
+  sync
+  echo 3 > /proc/sys/vm/drop_caches
 }
 
 handle_ctrl_c() {
@@ -34,7 +36,9 @@ do
         sleep 2
         go run . 8545 1337 "${no_matcher[i]}" "${no_send_to[i]}" run $data_file ./data/priceCurve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n
         kill $ganache_pid 2>/dev/null
+        wait $ganache_pid 2>/dev/null
+        sync
+        echo 3 > /proc/sys/vm/drop_caches
         echo
     done
 done
-
