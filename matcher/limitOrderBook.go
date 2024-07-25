@@ -19,7 +19,7 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
-	if len(m.BidOrders) >= 10 || len(m.AskOrders) >= 10 {
+	if len(m.BidOrders) >= 7 || len(m.AskOrders) >= 7 {
 		batches := m.batching()
 		for _, batch := range batches {
 			m.SendBatch(batch)

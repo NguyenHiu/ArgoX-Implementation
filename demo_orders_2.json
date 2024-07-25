@@ -1,0 +1,10 @@
+[
+  { "Price": 2238100, "Amount": 21, "Side": true },
+  { "Price": 2239900, "Amount": 100, "Side": false },
+  { "Price": 2239900, "Amount": 50, "Side": false },
+  { "Price": 2240000, "Amount": 100, "Side": false },
+  { "Price": 2240000, "Amount": 100, "Side": false },
+  { "Price": 2240000, "Amount": 100, "Side": false },
+  { "Price": 2239500, "Amount": 100, "Side": false },
+  { "Price": 2239500, "Amount": 75, "Side": false }
+]
