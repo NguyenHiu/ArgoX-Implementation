@@ -26,6 +26,7 @@ type SuperMatcher struct {
 	Orders          map[uuid.UUID][]*ExpandOrder
 	MatchedOrders   map[uuid.UUID]*big.Int
 	Mutex           sync.Mutex
+	NoBatches       int
 }
 
 func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, chainID int) (*SuperMatcher, error) {
@@ -53,6 +54,7 @@ func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, c
 		Batches:         []*Batch{},
 		Orders:          make(map[uuid.UUID][]*ExpandOrder),
 		MatchedOrders:   make(map[uuid.UUID]*big.Int),
+		NoBatches:       0,
 	}
 
 	return sm, nil
@@ -159,6 +161,7 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 		}
 
 		sm.Batches = append(sm.Batches, batch)
+		sm.NoBatches += 1
 		return "OK", nil
 	}
 

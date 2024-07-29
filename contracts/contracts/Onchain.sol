@@ -64,7 +64,7 @@ contract Onchain {
     event RevertBatch(bytes16);
     // Statistical
     event BatchTimestamp(bytes16, uint256);
-    event BatchMatchAmount(uint256);
+    event BatchMatchAmountAndProfit(uint256, uint256);
     event MatchedPrice(uint256);
     // --- Log Events ---
     event LogString(string);
@@ -319,8 +319,9 @@ contract Onchain {
             bidBatch.amount == askBatch.amount
         ) {
             // Statistical
-            emit BatchMatchAmount(bidBatch.amount);
-            emit MatchedPrice((bidBatch.price + askBatch.price) / 2);
+            uint256 matchPrice = (bidBatch.price + askBatch.price) / 2;
+            emit BatchMatchAmountAndProfit(bidBatch.amount, bidBatch.price - matchPrice); 
+            emit MatchedPrice(matchPrice);
 
             _batchMapping[bidBatchID].time = block.timestamp;
             _batchMapping[askBatchID].time = block.timestamp;

@@ -76,9 +76,11 @@ type Matcher struct {
 	CreateTime              map[uuid.UUID]int64
 	TotalTimeLocal          int64
 	TotalMatchedAmountLocal *big.Int
+	NumberOfMatchedOrder    int64
 	PriceCurveLocal         []*big.Int
 	CurrentPrice            *big.Int
 	IsGetPriceCurve         bool
+	TotalProfitLocal        *big.Int
 	/* MATCHING ANALYSIS */
 
 }
@@ -151,9 +153,11 @@ func NewMatcher(
 		CreateTime:              make(map[uuid.UUID]int64),
 		TotalTimeLocal:          0,
 		TotalMatchedAmountLocal: new(big.Int),
+		NumberOfMatchedOrder:    0,
 		PriceCurveLocal:         []*big.Int{},
 		CurrentPrice:            new(big.Int),
 		IsGetPriceCurve:         false,
+		TotalProfitLocal:        big.NewInt(0),
 		/* MATCHING ANALYSIS */
 	}
 }

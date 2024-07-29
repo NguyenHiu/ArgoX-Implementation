@@ -162,6 +162,14 @@ func main() {
 		matcher.IsGetPriceCurve = true
 		go matcher.GetPriceCurve()
 	}
+
+	// DEBUG
+	NoOrderSentToEachMatcher := map[uuid.UUID]int{}
+	for _, matcher := range matchers {
+		NoOrderSentToEachMatcher[matcher.ID] = 0
+	}
+	// DEBUG
+
 	// Onchain
 	_listenerInstance.IsGetPriceCurve = true
 	go _listenerInstance.GetPriceCurve()
@@ -190,6 +198,26 @@ func main() {
 					_logger.Error("Send Order Loop runs forever!\n")
 					break
 				}
+
+				/** DEBUG */
+				// var _id uuid.UUID
+				// _rand := rand.Intn(3)
+				// if _rand == 0 {
+				// 	_id = matchers[0].ID
+				// } else if _rand == 1 {
+				// 	_id = matchers[1].ID
+				// } else {
+				// 	_id = matchers[rand.Intn(len(alice.Connections)-2)+2].ID
+				// }
+				// NoOrderSentToEachMatcher[_id] += 1
+				// alice.SendNewOrders(
+				// 	_id,
+				// 	[]*orderApp.Order{newOrder},
+				// )
+				// <-time.After(time.Millisecond * 50)
+				// j += 1
+				/** DEBUG */
+
 				for _id, _conn := range alice.Connections {
 					if j >= constants.SEND_TO {
 						break
@@ -206,6 +234,9 @@ func main() {
 						}
 
 						alice.SendNewOrders(_id, []*orderApp.Order{newOrder})
+						// DEBUG
+						NoOrderSentToEachMatcher[_id] += 1
+						// DEBUG
 						_conn.IsBlocked = true
 						go func(conn *user.Connection) {
 							<-time.After(time.Millisecond * 50)
@@ -305,10 +336,15 @@ func main() {
 	// Match Amount
 	_totalOnchainMatchAmount := _listenerInstance.TotalMatchedAmountOnchain
 	_totalLocalMatchAmount := new(big.Int)
+	_numberOfMatchedORderLocal := 0
 
 	// Match Time
 	_totalLocalTime := 0
 	_totalOnchainTime := _listenerInstance.TotalTimeOnchain
+
+	// Profit
+	_totalProfitLocal := 0
+	_totalProfitOnchain := _listenerInstance.TotalProfitOnchain
 
 	// Gas
 	_address := []common.Address{
@@ -325,9 +361,11 @@ func main() {
 	// Get data from matchers
 	_totalMatcherGasUsed := 0
 	for idx, matcher := range matchers {
+		_numberOfMatchedORderLocal += int(matcher.NumberOfMatchedOrder)
 		_totalMatcherGasUsed += _gasUsed[matcher.Address]
 		_totalLocalTime += int(matcher.TotalTimeLocal)
 		_totalLocalMatchAmount.Add(_totalLocalMatchAmount, matcher.TotalMatchedAmountLocal)
+		_totalProfitLocal += int(matcher.TotalProfitLocal.Int64())
 		ExportPriceCurve(matcher.PriceCurveLocal, fmt.Sprintf("%v/local_curve_%v.json", _PRICE_CURVE_FOLDER_, idx))
 	}
 	_totalGas := _gasUsed[alice.Address] + _gasUsed[sm.Address] + _gasUsed[w.Address] + _gasUsed[rp.Address] + _totalMatcherGasUsed
@@ -361,8 +399,18 @@ func main() {
 		_totalOnchainMatchAmount,
 		_totalLocalTime,
 		_totalOnchainTime,
+		_numberOfMatchedORderLocal,
+		int(_listenerInstance.NumberOfMatchedOrder),
+		_totalProfitLocal,
+		int(_totalProfitOnchain.Int64()),
+		sm.NoBatches,
 		fmt.Sprintf("%v/logs.json", _PRICE_CURVE_FOLDER_),
 	)
 
 	_logger.Debug("Total Running Time: %v seconds\n", time.Since(MAIN_START_TIME).Seconds())
+
+	for _id, _num := range NoOrderSentToEachMatcher {
+		_logger.Debug("Number of orders sent to matcher %v: %v\n", _id, _num)
+	}
+
 }

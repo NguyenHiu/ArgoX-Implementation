@@ -21,18 +21,22 @@ var _logger = logger.NewLogger("Listener", logger.Yellow, logger.Bold)
 type Listener struct {
 	TotalTimeOnchain          int
 	TotalMatchedAmountOnchain *big.Int
+	NumberOfMatchedOrder      int64
 	PriceCurveOnchain         []*big.Int
 	CurrentPrice              *big.Int
 	IsGetPriceCurve           bool
+	TotalProfitOnchain        *big.Int
 }
 
 func NewListener() *Listener {
 	return &Listener{
 		TotalTimeOnchain:          0,
 		TotalMatchedAmountOnchain: new(big.Int),
+		NumberOfMatchedOrder:      0,
 		PriceCurveOnchain:         []*big.Int{},
 		CurrentPrice:              new(big.Int),
 		IsGetPriceCurve:           false,
+		TotalProfitOnchain:        new(big.Int),
 	}
 }
 
@@ -78,8 +82,8 @@ func (l *Listener) GetPriceCurve() {
 
 // Statistical
 func (l *Listener) WatchMatchAmount(instance *onchain.Onchain, opt *bind.WatchOpts) {
-	logs := make(chan *onchain.OnchainBatchMatchAmount)
-	sub, err := instance.WatchBatchMatchAmount(opt, logs)
+	logs := make(chan *onchain.OnchainBatchMatchAmountAndProfit)
+	sub, err := instance.WatchBatchMatchAmountAndProfit(opt, logs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,6 +100,15 @@ func (l *Listener) WatchMatchAmount(instance *onchain.Onchain, opt *bind.WatchOp
 			l.TotalMatchedAmountOnchain.Add(
 				l.TotalMatchedAmountOnchain,
 				vLogs.Arg0,
+			)
+			l.NumberOfMatchedOrder += 2
+			l.TotalProfitOnchain.Add(
+				l.TotalProfitOnchain,
+				vLogs.Arg1,
+			)
+			l.TotalProfitOnchain.Add(
+				l.TotalProfitOnchain,
+				vLogs.Arg1,
 			)
 		}
 	}

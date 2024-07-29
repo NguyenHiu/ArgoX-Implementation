@@ -19,7 +19,7 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
-	if len(m.BidOrders) >= 10 || len(m.AskOrders) >= 10 {
+	if len(m.BidOrders) >= 30 || len(m.AskOrders) >= 30 {
 		batches := m.batching()
 		for _, batch := range batches {
 			m.SendBatch(batch)
@@ -78,6 +78,7 @@ func (m *Matcher) matching() {
 		_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
+		m.NumberOfMatchedOrder += 2
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[bidOrder.Data.From]
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
 
@@ -93,6 +94,8 @@ func (m *Matcher) matching() {
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
 		// m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
+		m.TotalProfitLocal.Add(m.TotalMatchedAmountLocal, new(big.Int).Sub(bidOrder.Data.Price, matchPrice))
+		m.TotalProfitLocal.Add(m.TotalMatchedAmountLocal, new(big.Int).Sub(matchPrice, askOrder.Data.Price))
 		m.CurrentPrice = new(big.Int).Set(matchPrice)
 
 		trade := m.NewTrade(bidOrder.Data.From, askOrder.Data.From, matchPrice, minAmount)
