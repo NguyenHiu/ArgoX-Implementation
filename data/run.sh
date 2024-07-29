@@ -29,12 +29,12 @@ do
     for ((i=0; i<${#no_matcher[@]}; i++));
     do
         echo Send to ${no_send_to[i]}/${no_matcher[i]} matcher\(s\)
-        # mkdir -p ./data/priceCurve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n
+        mkdir -p ./data/test_2/price_curve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n
         data_file="./data/real_orders/real_orders_$n.json"
         ganache -a 200 -m '' -e 99999999999 --chain.chainId 1337 --p 8545 > /dev/null 2>&1 &
         ganache_pid=$!
         sleep 2
-        go run . 8545 1337 "${no_matcher[i]}" "${no_send_to[i]}" run $data_file ./data/test_2/price_curve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n
+        go run . 8545 1337 "${no_matcher[i]}" "${no_send_to[i]}" run $data_file ./data/test_2/price_curve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n > ./data/test_2/price_curve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n/log
         kill $ganache_pid 2>/dev/null
         wait $ganache_pid 2>/dev/null
         sync
