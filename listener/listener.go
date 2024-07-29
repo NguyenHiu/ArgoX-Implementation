@@ -101,7 +101,6 @@ func (l *Listener) WatchMatchAmount(instance *onchain.Onchain, opt *bind.WatchOp
 				l.TotalMatchedAmountOnchain,
 				vLogs.Arg0,
 			)
-			l.NumberOfMatchedOrder += 2
 			l.TotalProfitOnchain.Add(
 				l.TotalProfitOnchain,
 				vLogs.Arg1,
@@ -188,6 +187,7 @@ func (l *Listener) WatchReceivedBatchDetails(instance *onchain.Onchain, opt *bin
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Details] Batch::%v\n", id.String())
+			l.NumberOfMatchedOrder += vLogs.Arg1.Int64()
 		}
 	}
 }

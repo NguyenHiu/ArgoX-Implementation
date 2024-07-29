@@ -55,7 +55,7 @@ contract Onchain {
      * Events
      */
     event FullfilMatch(bytes16);
-    event ReceivedBatchDetails(bytes16);
+    event ReceivedBatchDetails(bytes16, uint256);
     event AcceptBatch(bytes16, uint256, uint256, bool);
     event PunishMatcher(address);
     event RemoveBatchOutOfDate(bytes16);
@@ -279,7 +279,7 @@ contract Onchain {
         }
 
         _batchMapping[batchID].time = 0;
-        emit ReceivedBatchDetails(batchID);
+        emit ReceivedBatchDetails(batchID, _ords.length);
     }
 
     function sendBatch(

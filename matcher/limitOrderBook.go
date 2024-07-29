@@ -78,7 +78,6 @@ func (m *Matcher) matching() {
 		_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
-		m.NumberOfMatchedOrder += 2
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[bidOrder.Data.From]
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
 
@@ -113,6 +112,7 @@ func (m *Matcher) matching() {
 		m.ClientConfigs[askOrder.Owner].TradeChannel.SendNewTrades([]*tradeApp.Trade{trade}, _bidOrder, _askOrder, false)
 
 		if bidOrder.Data.Amount.Cmp(new(big.Int)) == 0 {
+			m.NumberOfMatchedOrder += 1
 			for i, _bo := range m.BidOrders {
 				if _bo.Data.Equal(bidOrder.Data) {
 					m.BidOrders = append(m.BidOrders[:i], m.BidOrders[i+1:]...)
@@ -122,6 +122,7 @@ func (m *Matcher) matching() {
 			}
 		}
 		if askOrder.Data.Amount.Cmp(new(big.Int)) == 0 {
+			m.NumberOfMatchedOrder += 1
 			for i, _ao := range m.AskOrders {
 				if _ao.Data.Equal(askOrder.Data) {
 					m.AskOrders = append(m.AskOrders[:i], m.AskOrders[i+1:]...)
