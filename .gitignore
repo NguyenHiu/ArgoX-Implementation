@@ -13,7 +13,7 @@
 # Testing
 *.test
 *.test.*
-test_*
+# test_*
 
 # Dependency directories
 vendor/
@@ -40,5 +40,5 @@ Thumbs.db
 
 contracts/perun-eth-contracts
 contracts/openzeppelin-contracts
-data/result
+# data/result
 data/storage

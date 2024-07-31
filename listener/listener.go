@@ -101,10 +101,8 @@ func (l *Listener) WatchMatchAmount(instance *onchain.Onchain, opt *bind.WatchOp
 				l.TotalMatchedAmountOnchain,
 				vLogs.Arg0,
 			)
-			l.TotalProfitOnchain.Add(
-				l.TotalProfitOnchain,
-				vLogs.Arg1,
-			)
+			vLogs.Arg1.Mul(vLogs.Arg1, vLogs.Arg0)
+			vLogs.Arg1.Mul(vLogs.Arg1, big.NewInt(2))
 			l.TotalProfitOnchain.Add(
 				l.TotalProfitOnchain,
 				vLogs.Arg1,
@@ -168,7 +166,7 @@ func (l *Listener) WatchFullfilMatch(instance *onchain.Onchain, opt *bind.WatchO
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Fullfill] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Fullfill] Batch::%v\n", id.String())
 		}
 	}
 }
@@ -186,7 +184,7 @@ func (l *Listener) WatchReceivedBatchDetails(instance *onchain.Onchain, opt *bin
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Details] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Details] Batch::%v\n", id.String())
 			l.NumberOfMatchedOrder += vLogs.Arg1.Int64()
 		}
 	}
@@ -205,7 +203,7 @@ func (l *Listener) WatchAcceptBatch(instance *onchain.Onchain, opt *bind.WatchOp
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Accept] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Accept] Batch::%v\n", id.String())
 			// LogOrderBookOverview(instance)
 		}
 	}
@@ -223,7 +221,7 @@ func (l *Listener) WatchPunishMatcher(instance *onchain.Onchain, opt *bind.Watch
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Info("[Punish] Matcher::%v\n", vLogs.Arg0.String())
+			//IMHERETODEBUG_logger.Info("[Punish] Matcher::%v\n", vLogs.Arg0.String())
 		}
 	}
 }
@@ -241,7 +239,7 @@ func (l *Listener) WatchRemoveBatchOutOfDate(instance *onchain.Onchain, opt *bin
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Remove] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Remove] Batch::%v\n", id.String())
 		}
 	}
 }
@@ -259,7 +257,7 @@ func (l *Listener) WatchInvalidOrder(instance *onchain.Onchain, opt *bind.WatchO
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Invalid Order] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Invalid Order] Batch::%v\n", id.String())
 		}
 	}
 }
@@ -277,7 +275,7 @@ func (l *Listener) WatchInvalidBatch(instance *onchain.Onchain, opt *bind.WatchO
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Invalid Batch] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Invalid Batch] Batch::%v\n", id.String())
 		}
 	}
 }
@@ -295,7 +293,7 @@ func (l *Listener) WatchRevertBatch(instance *onchain.Onchain, opt *bind.WatchOp
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("[Revert] Batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("[Revert] Batch::%v\n", id.String())
 			log.Fatal("Revert batch")
 			// LogOrderBookOverview(instance)
 		}
@@ -314,7 +312,7 @@ func (l *Listener) WatchLogString(instance *onchain.Onchain, opt *bind.WatchOpts
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", vLogs.Arg0)
 		}
 	}
 }
@@ -331,7 +329,7 @@ func (l *Listener) WatchLogAddress(instance *onchain.Onchain, opt *bind.WatchOpt
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", vLogs.Arg0)
 		}
 	}
 }
@@ -348,7 +346,7 @@ func (l *Listener) WatchLogBytes32(instance *onchain.Onchain, opt *bind.WatchOpt
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", vLogs.Arg0)
 		}
 	}
 }
@@ -366,7 +364,7 @@ func (l *Listener) WatchLogBytes16(instance *onchain.Onchain, opt *bind.WatchOpt
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Debug("[Contract] %v\n", id.String())
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", id.String())
 		}
 	}
 }
@@ -383,7 +381,7 @@ func (l *Listener) WatchLogBytes(instance *onchain.Onchain, opt *bind.WatchOpts)
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", vLogs.Arg0)
 		}
 	}
 }
@@ -400,7 +398,7 @@ func (l *Listener) WatchLogUint256(instance *onchain.Onchain, opt *bind.WatchOpt
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", vLogs.Arg0)
 		}
 	}
 }
@@ -417,7 +415,7 @@ func (l *Listener) WatchLogRecoverError(instance *onchain.Onchain, opt *bind.Wat
 		case err := <-sub.Err():
 			log.Fatal(err)
 		case vLogs := <-logs:
-			_logger.Debug("[Contract] %v\n", vLogs.Arg0)
+			//IMHERETODEBUG_logger.Debug("[Contract] %v\n", vLogs.Arg0)
 		}
 	}
 }
@@ -465,5 +463,5 @@ func (l *Listener) WatchLogRecoverError(instance *onchain.Onchain, opt *bind.Wat
 // 		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
 // 	}
 
-// 	_logger.Debug("Overview:\n%v\n", s)
+// 	//IMHERETODEBUG_logger.Debug("Overview:\n%v\n", s)
 // }

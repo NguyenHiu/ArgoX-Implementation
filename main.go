@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -29,7 +30,7 @@ import (
 var _logger = logger.NewLogger("Main", logger.Red, logger.Bold)
 
 func main() {
-
+	fmt.Println("[")
 	MAIN_START_TIME := time.Now()
 
 	/// Get user's configurations
@@ -76,42 +77,42 @@ func main() {
 	}
 
 	// Deploy contracts
-	_logger.Debug("Deploy smart contracts...\n")
+	//IMHERETODEBUG_logger.Debug("Deploy smart contracts...\n")
 	deploy.DeployContracts()
 	_token, _onchain, adj, assetHolders, appAddr := getContracts()
 
 	// Deposit ETH to the smart contract
-	_logger.Debug("Deposit ETH to the exchange...\n")
+	//IMHERETODEBUG_logger.Debug("Deposit ETH to the exchange...\n")
 	onchainInstance, _ := onchain.NewOnchain(_onchain, clientNode)
 	util.DepositETH(onchainInstance, clientNode, constants.KEY_ALICE)
 	util.DepositETH(onchainInstance, clientNode, constants.KEY_BOB)
 	util.DepositETH(onchainInstance, clientNode, constants.KEY_DEPLOYER)
 
 	// Listener
-	_logger.Debug("Start Listener...\n")
+	//IMHERETODEBUG_logger.Debug("Start Listener...\n")
 	_listenerInstance := listener.NewListener()
 	go _listenerInstance.StartListener(_onchain)
 
 	// Reporter
-	_logger.Debug("Start Reporter...\n")
+	//IMHERETODEBUG_logger.Debug("Start Reporter...\n")
 	rp, err := reporter.NewReporter(_onchain, constants.KEY_REPORTER, constants.CHAIN_ID)
 	if err != nil {
-		_logger.Error("Create reporter error, err: %v\n", err)
+		//IMHERETODEBUG_logger.Error("Create reporter error, err: %v\n", err)
 	}
 	rp.Listening()
 	rp.Reporting()
 
 	// Worker
-	_logger.Debug("Start Worker...\n")
+	//IMHERETODEBUG_logger.Debug("Start Worker...\n")
 	w := worker.NewWorker(_onchain, constants.KEY_WORKER, clientNode)
 	w.Listening()
 
 	// Super Matcher
-	_logger.Debug("Start Super Matcher...\n")
+	//IMHERETODEBUG_logger.Debug("Start Super Matcher...\n")
 	sm := SetupSuperMatcher(_onchain, clientNode, constants.KEY_SUPER_MATCHER, constants.SUPER_MATCHER_PORT)
 
 	// Slice of matchers
-	_logger.Debug("Init matchers...\n")
+	//IMHERETODEBUG_logger.Debug("Init matchers...\n")
 	matchers := []*matcher.Matcher{}
 	for i := 0; i < constants.NO_MATCHER; i++ {
 		matcher := matcher.NewMatcher(
@@ -176,8 +177,14 @@ func main() {
 
 	SEND_ORDER_START_TIME := time.Now()
 
+	type _order struct {
+		ID     uuid.UUID
+		Amount int
+	}
+	OrderList := []_order{}
+
 	// Send orders
-	_logger.Debug("Send Orders...\n")
+	//IMHERETODEBUG_logger.Debug("Send Orders...\n")
 	if _TYPE_ == "run" {
 		// Run existed orders in `filename` file
 		orders, _ := data.LoadOrders(_FILENAME_)
@@ -189,13 +196,14 @@ func main() {
 				order.Side,
 				wallet.AsWalletAddr(alice.Address),
 			)
+			OrderList = append(OrderList, _order{ID: newOrder.OrderID, Amount: order.Amount})
 			newOrder.Sign(alice.PrivateKey)
 			j := 0
 			_check := time.Now()
 			_isSent := make(map[uuid.UUID]bool)
 			for j < constants.SEND_TO {
 				if time.Since(_check).Milliseconds() > 500*(int64(constants.NO_MATCHER+2)) {
-					_logger.Error("Send Order Loop runs forever!\n")
+					//IMHERETODEBUG_logger.Error("Send Order Loop runs forever!\n")
 					break
 				}
 
@@ -262,7 +270,7 @@ func main() {
 				_check := time.Now()
 				for j < constants.SEND_TO {
 					if time.Since(_check).Milliseconds() > 500*int64((constants.NO_MATCHER+2)) {
-						_logger.Error("Send Order Loop runs forever!\n")
+						//IMHERETODEBUG_logger.Error("Send Order Loop runs forever!\n")
 						break
 					}
 					for _id, _conn := range alice.Connections {
@@ -293,13 +301,13 @@ func main() {
 	}
 
 	// Create Final Order
-	_logger.Debug("Done sending orders phase.\n")
-	_logger.Debug("Waiting 10 seconds for sending end orders...\n")
+	//IMHERETODEBUG_logger.Debug("Done sending orders phase.\n")
+	//IMHERETODEBUG_logger.Debug("Waiting 10 seconds for sending end orders...\n")
 	<-time.After(time.Second * 10)
 
 	_finalOrder, err := orderApp.EndOrder(constants.KEY_ALICE)
 	if err != nil {
-		_logger.Error("create an end order is fail, err: %v\n", err)
+		//IMHERETODEBUG_logger.Error("create an end order is fail, err: %v\n", err)
 	}
 	for _id := range alice.Connections {
 		alice.SendNewOrders(_id, []*orderApp.Order{_finalOrder})
@@ -307,7 +315,7 @@ func main() {
 
 	SEND_ORDER_TIME_IN_SECONDS := time.Since(SEND_ORDER_START_TIME).Seconds()
 
-	_logger.Debug("Waiting 10 seconds before closing...\n")
+	//IMHERETODEBUG_logger.Debug("Waiting 10 seconds before closing...\n")
 	<-time.After(time.Second * 10)
 
 	// Stop collect price curves
@@ -317,7 +325,7 @@ func main() {
 	}
 
 	// // Payout.
-	// _logger.Info("Settle\n")
+	// //IMHERETODEBUG_logger.Info("Settle\n")
 	// for _, matcher := range matchers {
 	// 	if _, _ok := alice.Connections[matcher.ID]; _ok {
 	// 		alice.Settle(matcher.ID)
@@ -326,11 +334,25 @@ func main() {
 	// }
 
 	// // Cleanup.
-	// _logger.Info("Shutdown\n")
+	// //IMHERETODEBUG_logger.Info("Shutdown\n")
 	// for _, matcher := range matchers {
 	// 	alice.Shutdown(matcher.ID)
 	// 	matcher.Shutdown(alice.ID)
 	// }
+
+	//export order
+	{
+		file, err := os.Create("./debug_order.json")
+		if err != nil {
+			log.Fatalf("cannot open file: %v", "./debug_order.json")
+		}
+		defer file.Close()
+
+		enc := json.NewEncoder(file)
+		if err := enc.Encode(&OrderList); err != nil {
+			log.Fatalf("cannot write data into file: %v", "./debug_order.json")
+		}
+	}
 
 	/// Export results
 	// Match Amount
@@ -369,26 +391,29 @@ func main() {
 		ExportPriceCurve(matcher.PriceCurveLocal, fmt.Sprintf("%v/local_curve_%v.json", _PRICE_CURVE_FOLDER_, idx))
 	}
 	_totalGas := _gasUsed[alice.Address] + _gasUsed[sm.Address] + _gasUsed[w.Address] + _gasUsed[rp.Address] + _totalMatcherGasUsed
-	_logger.Debug("Total Gas: %v\n", _totalGas)
-	_logger.Debug("  > Super Matcher: %v\n", _gasUsed[sm.Address])
-	_logger.Debug("  > Total Matcher: %v\n", _totalGas)
-	_logger.Debug("  > Reporter: %v\n", _gasUsed[rp.Address])
-	_logger.Debug("  > Worker: %v\n", _gasUsed[w.Address])
-	_logger.Debug("Total Match Amount: %v\n", new(big.Int).Add(
+	//IMHERETODEBUG_logger.Debug("Total Gas: %v\n", _totalGas)
+	//IMHERETODEBUG_logger.Debug("  > Super Matcher: %v\n", _gasUsed[sm.Address])
+	//IMHERETODEBUG_logger.Debug("  > Total Matcher: %v\n", _totalGas)
+	//IMHERETODEBUG_logger.Debug("  > Reporter: %v\n", _gasUsed[rp.Address])
+	//IMHERETODEBUG_logger.Debug("  > Worker: %v\n", _gasUsed[w.Address])
+	//IMHERETODEBUG_logger.Debug("Total Match Amount: %v\n", new(big.Int).Add(
 		_totalLocalMatchAmount,
 		_totalOnchainMatchAmount,
 	))
-	_logger.Debug("  > Total Local Match Amount: %v\n", _totalLocalMatchAmount)
-	_logger.Debug("  > Total Onchain Match Amount: %v\n", _totalOnchainMatchAmount)
-	_logger.Debug("Total Match Time: %v\n", _totalLocalTime+_totalOnchainTime)
-	_logger.Debug("  > Total Local Match Time: %v\n", _totalLocalTime)
-	_logger.Debug("  > Total Onchain Match Time: %v\n", _totalOnchainTime)
-	_logger.Debug("Sending Order Time: %v seconds\n", SEND_ORDER_TIME_IN_SECONDS)
+	//IMHERETODEBUG_logger.Debug("  > Total Local Match Amount: %v\n", _totalLocalMatchAmount)
+	//IMHERETODEBUG_logger.Debug("  > Total Onchain Match Amount: %v\n", _totalOnchainMatchAmount)
+	//IMHERETODEBUG_logger.Debug("Total Match Time: %v\n", _totalLocalTime+_totalOnchainTime)
+	//IMHERETODEBUG_logger.Debug("  > Total Local Match Time: %v\n", _totalLocalTime)
+	//IMHERETODEBUG_logger.Debug("  > Total Onchain Match Time: %v\n", _totalOnchainTime)
+	//IMHERETODEBUG_logger.Debug("Total Match Order: %v\n", _numberOfMatchedORderLocal+int(_listenerInstance.NumberOfMatchedOrder))
+	//IMHERETODEBUG_logger.Debug("  > Total Local Match Order: %v\n", _numberOfMatchedORderLocal)
+	//IMHERETODEBUG_logger.Debug("  > Total Onchain Match Order: %v\n", int(_listenerInstance.NumberOfMatchedOrder))
+	//IMHERETODEBUG_logger.Debug("Sending Order Time: %v seconds\n", SEND_ORDER_TIME_IN_SECONDS)
 
-	_logger.Debug("Exporting Price Curves...\n")
+	//IMHERETODEBUG_logger.Debug("Exporting Price Curves...\n")
 	ExportPriceCurve(_listenerInstance.PriceCurveOnchain, fmt.Sprintf("%v/onchain_curve.json", _PRICE_CURVE_FOLDER_))
 
-	_logger.Debug("Exporting Run Logs...\n")
+	//IMHERETODEBUG_logger.Debug("Exporting Run Logs...\n")
 	ExportRunLogs(
 		_gasUsed[alice.Address],
 		_gasUsed[sm.Address],
@@ -407,10 +432,10 @@ func main() {
 		fmt.Sprintf("%v/logs.json", _PRICE_CURVE_FOLDER_),
 	)
 
-	_logger.Debug("Total Running Time: %v seconds\n", time.Since(MAIN_START_TIME).Seconds())
+	//IMHERETODEBUG_logger.Debug("Total Running Time: %v seconds\n", time.Since(MAIN_START_TIME).Seconds())
 
 	for _id, _num := range NoOrderSentToEachMatcher {
-		_logger.Debug("Number of orders sent to matcher %v: %v\n", _id, _num)
+		//IMHERETODEBUG_logger.Debug("Number of orders sent to matcher %v: %v\n", _id, _num)
 	}
-
+	fmt.Println("]")
 }

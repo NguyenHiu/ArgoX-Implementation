@@ -92,7 +92,7 @@ func (u *User) AcceptedChannelAll() {
 }
 
 func (u *User) SendNewOrders(matcherID uuid.UUID, newOrders []*orderApp.Order) {
-	_logger.Info("[%v] Sending new ORDER...\n", u.Address.String()[:5])
+	//IMHERETODEBUG_logger.Info("[%v] Sending new ORDER...\n", u.Address.String()[:5])
 	u.Connections[matcherID].OrderChannel.SendNewOrders(newOrders)
 }
 

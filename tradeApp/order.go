@@ -128,12 +128,12 @@ func (o *Order) IsValidSignature() bool {
 
 	pub, err := crypto.SigToPub(hashedData.Bytes(), o.Signature)
 	if err != nil {
-		_logger.Debug("Cannot recover public key from signature, error: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("Cannot recover public key from signature, error: %v\n", err)
 		return false
 	}
 	_owner := wallet.AsWalletAddr(crypto.PubkeyToAddress(*pub))
 	if _owner.Cmp(o.Owner) != 0 {
-		_logger.Debug("Provided public key does not match with the order's owner\n")
+		//IMHERETODEBUG_logger.Debug("Provided public key does not match with the order's owner\n")
 		return false
 	}
 	pubBytes := crypto.FromECDSAPub(pub)
@@ -146,36 +146,36 @@ func (o *Order) Encode_TransferLightning() []byte {
 
 	orderID, err := o.OrderID.MarshalBinary()
 	if err != nil {
-		_logger.Debug("invalid uuid\n")
+		//IMHERETODEBUG_logger.Debug("invalid uuid\n")
 	}
 	err = binary.Write(buf, binary.BigEndian, orderID)
 	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Price))
 	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, PaddingToUint256(o.Amount))
 	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Side)
 	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Owner.Bytes())
 	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	err = binary.Write(buf, binary.BigEndian, o.Signature)
 	if err != nil {
-		_logger.Debug("binary.Write failed: %v\n", err)
+		//IMHERETODEBUG_logger.Debug("binary.Write failed: %v\n", err)
 	}
 
 	return buf.Bytes()

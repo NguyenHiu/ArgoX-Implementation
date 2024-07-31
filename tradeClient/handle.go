@@ -59,7 +59,7 @@ func (c *TradeAppClient) HandleProposal(p client.ChannelProposal, r *client.Prop
 	)
 	ch, err := r.Accept(context.TODO(), accept)
 	if err != nil {
-		_logger.Error("Error accepting channel proposal: %v\n", err)
+		//IMHERETODEBUG_logger.Error("Error accepting channel proposal: %v\n", err)
 		return
 	}
 
@@ -82,5 +82,5 @@ func (c *TradeAppClient) HandleUpdate(cur *channel.State, next client.ChannelUpd
 
 // HandleAdjudicatorEvent is the callback for smart contract events.
 func (c *TradeAppClient) HandleAdjudicatorEvent(e channel.AdjudicatorEvent) {
-	// _logger.Info("Adjudicator event: type = %T, client = %v\n", e, c.account)
+	// //IMHERETODEBUG_logger.Info("Adjudicator event: type = %T, client = %v\n", e, c.account)
 }

@@ -124,5 +124,5 @@ func (e *ExpandOrder) IsValidOrder(owner common.Address) bool {
 		amount.Add(amount, trade.Amount)
 	}
 
-	return new(big.Int).Sub(e.OriginalOrder.Amount, amount).Cmp(e.ShadowOrder.Amount) == 0
+	return new(big.Int).Sub(e.OriginalOrder.Amount, amount).Cmp(e.ShadowOrder.Amount) != -1
 }

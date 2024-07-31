@@ -90,13 +90,13 @@ func (w *Worker) canMatch(i, j int) bool {
 }
 
 func (w *Worker) log() {
-	_logger.Debug("======ASK===================================\n")
+	//IMHERETODEBUG_logger.Debug("======ASK===================================\n")
 	for _, batch := range w.AskBatches {
-		_logger.Debug("\t%v - %v\n", batch.Price, batch.Amount)
+		//IMHERETODEBUG_logger.Debug("\t%v - %v\n", batch.Price, batch.Amount)
 	}
-	_logger.Debug("======BID===================================\n")
+	//IMHERETODEBUG_logger.Debug("======BID===================================\n")
 	for _, batch := range w.BidBatches {
-		_logger.Debug("\t%v - %v\n", batch.Price, batch.Amount)
+		//IMHERETODEBUG_logger.Debug("\t%v - %v\n", batch.Price, batch.Amount)
 	}
-	_logger.Debug("\n")
+	//IMHERETODEBUG_logger.Debug("\n")
 }

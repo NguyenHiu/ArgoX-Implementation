@@ -1,6 +1,8 @@
 package matcher
 
 import (
+	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -19,27 +21,27 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
 	m.matching()
-	if len(m.BidOrders) >= 30 || len(m.AskOrders) >= 30 {
-		batches := m.batching()
-		for _, batch := range batches {
-			m.SendBatch(batch)
-		}
-	}
+	// if len(m.BidOrders) >= 30 || len(m.AskOrders) >= 30 {
+	// 	batches := m.batching()
+	// 	for _, batch := range batches {
+	// 		m.SendBatch(batch)
+	// 	}
+	// }
 }
 
 func (m *Matcher) Log() {
-	_logger.Debug("-----------------------------\n")
-	_logger.Debug("Local Order Book:\n")
-	_logger.Debug("BID:\n")
+	//IMHERETODEBUG_logger.Debug("-----------------------------\n")
+	//IMHERETODEBUG_logger.Debug("Local Order Book:\n")
+	//IMHERETODEBUG_logger.Debug("BID:\n")
 	for _, order := range m.BidOrders {
-		_logger.Debug("\t[%v] %v - %v\n", order.Data.From.String()[:5], order.Data.Price, order.Data.Amount)
+		//IMHERETODEBUG_logger.Debug("\t[%v] %v - %v\n", order.Data.From.String()[:5], order.Data.Price, order.Data.Amount)
 	}
-	_logger.Debug("---------------\n")
-	_logger.Debug("ASK:\n")
+	//IMHERETODEBUG_logger.Debug("---------------\n")
+	//IMHERETODEBUG_logger.Debug("ASK:\n")
 	for _, order := range m.AskOrders {
-		_logger.Debug("\t[%v] %v - %v\n", order.Data.From.String()[:5], order.Data.Price, order.Data.Amount)
+		//IMHERETODEBUG_logger.Debug("\t[%v] %v - %v\n", order.Data.From.String()[:5], order.Data.Price, order.Data.Amount)
 	}
-	_logger.Debug("-----------------------------\n")
+	//IMHERETODEBUG_logger.Debug("-----------------------------\n")
 }
 
 func (m *Matcher) matching() {
@@ -48,65 +50,80 @@ func (m *Matcher) matching() {
 
 	// naive matching
 	for m.canMatch() {
-		_logger.Debug("Matching: (%v..., %v), (%v..., %v)\n", m.BidOrders[0].Data.From.String()[:5], m.BidOrders[0].Data.Amount, m.AskOrders[0].Data.From.String()[:5], m.AskOrders[0].Data.Amount)
+		//IMHERETODEBUG_logger.Debug("Matching: (%v..., %v), (%v..., %v)\n", m.BidOrders[0].Data.From.String()[:5], m.BidOrders[0].Data.Amount, m.AskOrders[0].Data.From.String()[:5], m.AskOrders[0].Data.Amount)
 
 		bidOrder := m.BidOrders[0]
 		askOrder := m.AskOrders[0]
 
 		// Get minimize amount among bid & ask order
 		minAmount := new(big.Int).Set(bidOrder.Data.Amount)
-		if minAmount.Cmp(askOrder.Data.Amount) == 1 {
+		if minAmount.Cmp(m.AskOrders[0].Data.Amount) == 1 {
 			minAmount = new(big.Int).Set(askOrder.Data.Amount)
 		}
 
-		// Check if bidOrder is valid and didnt be matched
-		if leftAmount := m.SuperMatcherInstance.GetLeftAmount(bidOrder.Data.From); leftAmount.Cmp(big.NewInt(-1)) != 0 &&
-			leftAmount.Cmp(bidOrder.Data.Amount) == -1 {
-			m.BidOrders = m.BidOrders[1:]
-			continue
-		}
-		// Check if askOrder is valid and didnt be matched
-		if leftAmount := m.SuperMatcherInstance.GetLeftAmount(askOrder.Data.From); leftAmount.Cmp(big.NewInt(-1)) != 0 &&
-			leftAmount.Cmp(askOrder.Data.Amount) == -1 {
-			m.AskOrders = m.AskOrders[1:]
+		_isValid, _bidLeftAmount, _askLeftAmount := m.SuperMatcherInstance.MatchAnOrder(
+			bidOrder.Data.From, minAmount, m.Orders[bidOrder.Data.From].Amount,
+			askOrder.Data.From, minAmount, m.Orders[askOrder.Data.From].Amount,
+		)
+
+		if !_isValid {
+			if _bidLeftAmount.Cmp(new(big.Int)) == 0 {
+				_bid := bidOrder
+				m.BidOrders = m.BidOrders[1:]
+				delete(m.Orders, _bid.Data.From)
+			} else {
+				bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
+			}
+			if _askLeftAmount.Cmp(new(big.Int)) == 0 {
+				_ask := askOrder
+				m.AskOrders = m.AskOrders[1:]
+				delete(m.Orders, _ask.Data.From)
+			} else {
+				askOrder.Data.Amount = new(big.Int).Set(_askLeftAmount)
+			}
 			continue
 		}
 
-		_logger.Debug("Matched, amount: %v\n", minAmount)
-		_logger.Debug("Matched, amount: %v\n", minAmount)
-		_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[bidOrder.Data.From])
-		_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
+		if _bidLeftAmount.Cmp(new(big.Int).Sub(bidOrder.Data.Amount, minAmount)) != 0 {
+			log.Fatal("INVALID MATCHING BID")
+		}
+		if _askLeftAmount.Cmp(new(big.Int).Sub(askOrder.Data.Amount, minAmount)) != 0 {
+			log.Fatal("INVALID MATCHING ASK")
+		}
+
+		bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
+		askOrder.Data.Amount = new(big.Int).Set(_askLeftAmount)
+
+		// //IMHERETODEBUG_logger.Debug("Matched, amount: %v\n", minAmount)
+		// //IMHERETODEBUG_logger.Debug("Matched, amount: %v\n", minAmount)
+		// //IMHERETODEBUG_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[bidOrder.Data.From])
+		// //IMHERETODEBUG_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[bidOrder.Data.From]
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
 
-		bidOrder.Data.Amount.Sub(bidOrder.Data.Amount, minAmount)
-		askOrder.Data.Amount.Sub(askOrder.Data.Amount, minAmount)
+		fmt.Printf("{\"ID\": \"%v\", \"Amount\": %v},", bidOrder.Data.From, minAmount)
+		fmt.Printf("{\"ID\": \"%v\", \"Amount\": %v},", askOrder.Data.From, minAmount)
 
-		if !m.SuperMatcherInstance.MatchAnOrder(bidOrder.Data.From, bidOrder.Data.Amount) {
-			_logger.Error("invalid action: matching an invalid order (bid)\n")
-		}
-		if !m.SuperMatcherInstance.MatchAnOrder(askOrder.Data.From, askOrder.Data.Amount) {
-			_logger.Error("invalid action: matching an invalid order (ask)\n")
-		}
+		// IMHERETODEBUG_logger.Debug("[DEBUG FLAG] %v - %v\n", bidOrder.Data.From, minAmount)
+		// IMHERETODEBUG_logger.Debug("[DEBUG FLAG] %v - %v\n", askOrder.Data.From, minAmount)
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
 		// m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
-		m.TotalProfitLocal.Add(m.TotalMatchedAmountLocal, new(big.Int).Sub(bidOrder.Data.Price, matchPrice))
-		m.TotalProfitLocal.Add(m.TotalMatchedAmountLocal, new(big.Int).Sub(matchPrice, askOrder.Data.Price))
+		m.TotalProfitLocal.Add(m.TotalProfitLocal, new(big.Int).Mul(new(big.Int).Sub(bidOrder.Data.Price, askOrder.Data.Price), minAmount))
 		m.CurrentPrice = new(big.Int).Set(matchPrice)
 
 		trade := m.NewTrade(bidOrder.Data.From, askOrder.Data.From, matchPrice, minAmount)
 
 		_bidOrder, ok := m.Orders[bidOrder.Data.From]
 		if !ok {
-			_logger.Debug("can not found bid order\n")
+			//IMHERETODEBUG_logger.Debug("can not found bid order\n")
 		}
 
 		_askOrder, ok := m.Orders[askOrder.Data.From]
 		if !ok {
-			_logger.Debug("can not found ask order\n")
+			//IMHERETODEBUG_logger.Debug("can not found ask order\n")
 		}
 		m.ClientConfigs[bidOrder.Owner].TradeChannel.SendNewTrades([]*tradeApp.Trade{trade}, _bidOrder, _askOrder, true)
 		m.ClientConfigs[askOrder.Owner].TradeChannel.SendNewTrades([]*tradeApp.Trade{trade}, _bidOrder, _askOrder, false)

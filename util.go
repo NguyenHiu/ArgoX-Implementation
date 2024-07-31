@@ -103,7 +103,7 @@ func PrintBalances(tokenAddr common.Address, clientNode bind.ContractBackend, ad
 		if err != nil {
 			log.Fatal(err)
 		}
-		// _logger.Info("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
+		// //IMHERETODEBUG_logger.Info("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
 		fmt.Printf("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
 	}
 }

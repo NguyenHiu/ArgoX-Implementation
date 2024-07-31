@@ -27,14 +27,14 @@ func (r *Reporter) reporting() {
 
 		for k, v := range r.PendingBatches {
 			if time.Now().Unix()-v >= r.WaitingTime {
-				_logger.Info("Report batch::%v\n", k.String())
+				//IMHERETODEBUG_logger.Info("Report batch::%v\n", k.String())
 				r.prepareNonceAndGasPrice(0, 2000000)
 				batchID, _ := k.MarshalBinary()
 				var _batchID [16]byte
 				copy(_batchID[:], batchID[:16])
 				_, err := r.OnchainInstance.ReportMissingDeadline(r.Auth, _batchID)
 				if err != nil {
-					_logger.Error("Reporting error, err: %v\n", err)
+					//IMHERETODEBUG_logger.Error("Reporting error, err: %v\n", err)
 				}
 			}
 			r.Mux.Unlock()
@@ -53,7 +53,7 @@ func (r *Reporter) Listening() {
 func getWaitingTime(instance *onchain.Onchain) *big.Int {
 	waitingTime, err := instance.GetWaitingTime(&bind.CallOpts{Context: context.Background()})
 	if err != nil {
-		_logger.Error("Get Waiting Time is error, err: %v\n", err)
+		//IMHERETODEBUG_logger.Error("Get Waiting Time is error, err: %v\n", err)
 		return nil
 	}
 	return waitingTime
@@ -92,7 +92,7 @@ func (r *Reporter) WatchReceivedBatchDetails() {
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			_logger.Info("Remove batch::%v\n", id.String())
+			//IMHERETODEBUG_logger.Info("Remove batch::%v\n", id.String())
 			r.Mux.Lock()
 			delete(r.PendingBatches, id)
 			r.Mux.Unlock()
@@ -130,7 +130,7 @@ func (r *Reporter) WatchRemoveBatchOutOfDate() {
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			// _logger.Info("Remove batch::%v\n", id.String())
+			// //IMHERETODEBUG_logger.Info("Remove batch::%v\n", id.String())
 			r.Mux.Lock()
 			delete(r.PendingBatches, id)
 			r.Mux.Unlock()

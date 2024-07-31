@@ -98,7 +98,7 @@ func (sm *SuperMatcher) Process() {
 
 	// The batch is already validated when being appended to the sm.Batches
 
-	// _logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
+	// //IMHERETODEBUG_logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
 
 	// Send batch to smart contract
 	sm.SendBatch(batch)
@@ -107,19 +107,19 @@ func (sm *SuperMatcher) Process() {
 func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 	// 1. valid owner: owner is a matcher & the signature is valid
 	if !sm.isMatcher(batch.Owner) {
-		_logger.Debug("Batch::%v (Invalid Matcher)\n", batch.BatchID)
+		//IMHERETODEBUG_logger.Debug("Batch::%v (Invalid Matcher)\n", batch.BatchID)
 		return false
 	}
 
 	if !batch.IsValidSignature() {
-		_logger.Debug("Batch::%v (Invalid Batch's Signature)\n", batch.BatchID)
+		//IMHERETODEBUG_logger.Debug("Batch::%v (Invalid Batch's Signature)\n", batch.BatchID)
 		return false
 	}
 
 	// 2. check signatures of orders in the batch
 	for idx, order := range batch.Orders {
 		if !order.IsValidOrder(batch.Owner) {
-			_logger.Debug("Batch::%v (Invalid Order at %v) \n", batch.BatchID, idx)
+			//IMHERETODEBUG_logger.Debug("Batch::%v (Invalid Order at %v) \n", batch.BatchID, idx)
 			return false
 		}
 	}
@@ -136,13 +136,13 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 	if sm.CheckValidBatch(batch) {
 		sm.Mutex.Lock()
 		defer sm.Mutex.Unlock()
-		_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
+		//IMHERETODEBUG_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
 
 		// Filter orders in the batch
 		validOrders := []*ExpandOrder{}
 		for idx, order := range batch.Orders {
 			if sm.isExists(order) {
-				_logger.Debug("Order::%v at %v has already existed (total: %v)\n", order.OriginalOrder.OrderID.String(), idx, len(batch.Orders))
+				//IMHERETODEBUG_logger.Debug("Order::%v at %v has already existed (total: %v)\n", order.OriginalOrder.OrderID.String(), idx, len(batch.Orders))
 			} else {
 				sm.addOrder(order)
 				validOrders = append(validOrders, order)
@@ -151,7 +151,7 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 
 		// If the batch is empty, stop
 		if len(validOrders) == 0 {
-			_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
+			//IMHERETODEBUG_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
 			return "REMOVE", nil
 		}
 
@@ -169,6 +169,8 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 }
 
 func (sm *SuperMatcher) GetLeftAmount(id uuid.UUID) *big.Int {
+	sm.Mutex.Lock()
+	defer sm.Mutex.Unlock()
 	_leftAmount, ok := sm.MatchedOrders[id]
 	if ok {
 		return new(big.Int).Set(_leftAmount)
@@ -176,16 +178,33 @@ func (sm *SuperMatcher) GetLeftAmount(id uuid.UUID) *big.Int {
 	return big.NewInt(-1)
 }
 
-func (sm *SuperMatcher) MatchAnOrder(id uuid.UUID, leftAmount *big.Int) bool {
-	_leftAmount, ok := sm.MatchedOrders[id]
-	if !ok {
-		sm.MatchedOrders[id] = new(big.Int).Set(leftAmount)
-		return true
+func (sm *SuperMatcher) MatchAnOrder(
+	bidId uuid.UUID, bidAmount, bidTotalAmount *big.Int,
+	askId uuid.UUID, askAmount, askTotalAmount *big.Int,
+) (bool, *big.Int, *big.Int) {
+	sm.Mutex.Lock()
+	defer sm.Mutex.Unlock()
+
+	isValidBid, bidLeftAmount := sm.matchAnOrder(bidId, bidAmount, bidTotalAmount)
+	isValidAsk, askLeftAmount := sm.matchAnOrder(askId, askAmount, askTotalAmount)
+	if !isValidBid || !isValidAsk {
+		return false, bidLeftAmount, askLeftAmount
+	}
+	sm.MatchedOrders[bidId].Sub(sm.MatchedOrders[bidId], bidAmount)
+	sm.MatchedOrders[askId].Sub(sm.MatchedOrders[askId], askAmount)
+
+	return true, sm.MatchedOrders[bidId], sm.MatchedOrders[askId]
+}
+
+func (sm *SuperMatcher) matchAnOrder(id uuid.UUID, amount, totalAmount *big.Int) (bool, *big.Int) {
+
+	if _, ok := sm.MatchedOrders[id]; !ok {
+		sm.MatchedOrders[id] = new(big.Int).Set(totalAmount)
 	}
 
-	if leftAmount.Cmp(_leftAmount) != -1 {
-		return false
+	if amount.Cmp(sm.MatchedOrders[id]) == 1 {
+		return false, sm.MatchedOrders[id]
 	}
-	sm.MatchedOrders[id] = new(big.Int).Set(leftAmount)
-	return true
+
+	return true, amount
 }

@@ -68,7 +68,7 @@ func (a *TradeApp) DecodeData(r io.Reader) (channel.Data, error) {
 		// Get order
 		order := &Order{}
 		if err := order.Decode_TransferLightning(data); err != nil {
-			_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
+			//IMHERETODEBUG_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
 			return nil, err
 		}
 		// Store order
@@ -131,26 +131,26 @@ func (a *TradeApp) ValidInit(p *channel.Params, s *channel.State) error {
 func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.State, idx channel.Index) error {
 	err := channel.AssetsAssertEqual(from.Assets, to.Assets)
 	if err != nil {
-		_logger.Error("invalid assets: %v\n", err)
+		//IMHERETODEBUG_logger.Error("invalid assets: %v\n", err)
 		return fmt.Errorf("invalid assets: %v", err)
 	}
 
 	// Get data
 	fromData, ok := from.Data.(*TradeAppData)
 	if !ok {
-		_logger.Error("from state: invalid data type: %T\n", from.Data)
+		//IMHERETODEBUG_logger.Error("from state: invalid data type: %T\n", from.Data)
 		return fmt.Errorf("from state: invalid data type: %T", from.Data)
 	}
 
 	toData, ok := to.Data.(*TradeAppData)
 	if !ok {
-		_logger.Error("to state: invalid data type: %T\n", from.Data)
+		//IMHERETODEBUG_logger.Error("to state: invalid data type: %T\n", from.Data)
 		return fmt.Errorf("to state: invalid data type: %T", from.Data)
 	}
 
 	// Check change
 	if len(toData.Orders) < len(fromData.Orders) {
-		_logger.Error("invalid transition: the number of orders in new state is incorrect\n")
+		//IMHERETODEBUG_logger.Error("invalid transition: the number of orders in new state is incorrect\n")
 		return fmt.Errorf("invalid transition: the number of orders in new state is incorrect")
 	}
 
@@ -160,15 +160,15 @@ func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.Sta
 		if !ok {
 			// Validate new order
 			if !v.IsValidSignature() {
-				_logger.Error("invalid transition: the new order is not valid\n")
+				//IMHERETODEBUG_logger.Error("invalid transition: the new order is not valid\n")
 				return fmt.Errorf("invalid transition: the new order is not valid")
 			}
 		} else {
 			// Check if the order stays the same
-			// _logger.Debug("v: %v\n", v)
-			// _logger.Debug("_v: %v\n", _v)
+			// //IMHERETODEBUG_logger.Debug("v: %v\n", v)
+			// //IMHERETODEBUG_logger.Debug("_v: %v\n", _v)
 			if !v.Equal(_v) {
-				_logger.Error("invalid transition: \n")
+				//IMHERETODEBUG_logger.Error("invalid transition: \n")
 				return fmt.Errorf("invalid transition: ")
 			}
 		}
@@ -180,15 +180,15 @@ func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.Sta
 		if !ok {
 			// Validate new trade
 			if !v.IsValidSignature() {
-				_logger.Error("invalid transition: the new trade is not valid\n")
+				//IMHERETODEBUG_logger.Error("invalid transition: the new trade is not valid\n")
 				return fmt.Errorf("invalid transition: the new trade is not valid")
 			}
 		} else {
 			// Check if the old trades stay the same
 			if !v.Equal(_v) {
-				_logger.Debug("v: %v\n", v)
-				_logger.Debug("_v: %v\n", _v)
-				_logger.Error("invalid transition: the old trades were changed\n")
+				//IMHERETODEBUG_logger.Debug("v: %v\n", v)
+				//IMHERETODEBUG_logger.Debug("_v: %v\n", _v)
+				//IMHERETODEBUG_logger.Error("invalid transition: the old trades were changed\n")
 				return fmt.Errorf("invalid transition: the old trades were changed")
 			}
 
@@ -196,21 +196,21 @@ func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.Sta
 			_, ok1 := toData.OrdersMapping[v.BidOrder]
 			_, ok2 := toData.OrdersMapping[v.AskOrder]
 			if !ok1 && !ok2 {
-				_logger.Error("invalid transition: trade invalid\n")
+				//IMHERETODEBUG_logger.Error("invalid transition: trade invalid\n")
 				return fmt.Errorf("invalid transition: trade invalid")
 			}
 			if ok1 {
 				amount := new(big.Int).Set(toData.OrdersMapping[v.BidOrder].Amount)
-				// _logger.Debug("amount: %v\n", amount)
+				// //IMHERETODEBUG_logger.Debug("amount: %v\n", amount)
 				for _, trade := range toData.BidToTrade[v.BidOrder] {
 					amount.Sub(amount, trade.Amount)
 				}
 				if amount.Cmp(new(big.Int)) == -1 {
-					_logger.Debug("bid order's id: %v\n", v.BidOrder.String())
-					_logger.Debug("original amount: %v\n", toData.OrdersMapping[v.BidOrder].Amount)
-					_logger.Debug("amount: %v\n", amount)
-					_logger.Debug("v.Amount: %v\n", v.Amount)
-					_logger.Error("invalid transition: trade's amount invalid\n")
+					//IMHERETODEBUG_logger.Debug("bid order's id: %v\n", v.BidOrder.String())
+					//IMHERETODEBUG_logger.Debug("original amount: %v\n", toData.OrdersMapping[v.BidOrder].Amount)
+					//IMHERETODEBUG_logger.Debug("amount: %v\n", amount)
+					//IMHERETODEBUG_logger.Debug("v.Amount: %v\n", v.Amount)
+					//IMHERETODEBUG_logger.Error("invalid transition: trade's amount invalid\n")
 					return fmt.Errorf("invalid transition: trade's amount invalid")
 				}
 			}
@@ -220,18 +220,18 @@ func (a *TradeApp) ValidTransition(params *channel.Params, from, to *channel.Sta
 					amount.Sub(amount, trade.Amount)
 				}
 				if amount.Cmp(new(big.Int)) == -1 {
-					_logger.Debug("ask order's id: %v\n", v.AskOrder.String())
-					_logger.Debug("original amount: %v\n", toData.OrdersMapping[v.AskOrder].Amount)
-					_logger.Debug("amount: %v\n", amount)
-					_logger.Debug("v.Amount: %v\n", v.Amount)
-					_logger.Error("invalid transition: trade's amount invalid\n")
+					//IMHERETODEBUG_logger.Debug("ask order's id: %v\n", v.AskOrder.String())
+					//IMHERETODEBUG_logger.Debug("original amount: %v\n", toData.OrdersMapping[v.AskOrder].Amount)
+					//IMHERETODEBUG_logger.Debug("amount: %v\n", amount)
+					//IMHERETODEBUG_logger.Debug("v.Amount: %v\n", v.Amount)
+					//IMHERETODEBUG_logger.Error("invalid transition: trade's amount invalid\n")
 					return fmt.Errorf("invalid transition: trade's amount invalid")
 				}
 			}
 
 			// Check signature
 			if !v.IsValidSignature() {
-				_logger.Error("invalid transition: the new trade's signature is invalid\n")
+				//IMHERETODEBUG_logger.Error("invalid transition: the new trade's signature is invalid\n")
 				return fmt.Errorf("invalid transition: the new trade's signature is invalid")
 			}
 		}
