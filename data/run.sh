@@ -1,8 +1,8 @@
 #!/bin/bash
 
-no_order=(1000)
-no_matcher=(2)
-no_send_to=(1)
+no_order=(1000 1500 2000)
+no_matcher=(10)
+no_send_to=(2)
 
 cd ..
 
@@ -30,7 +30,7 @@ do
     do
         echo Send to ${no_send_to[i]}/${no_matcher[i]} matcher\(s\)
         mkdir -p ./data/test_2/price_curve_"${no_send_to[i]}"_"${no_matcher[i]}"_$n
-        data_file="./data/real_orders/real_orders_$n.json"
+        data_file="./data/real_orders/real_orders_$n"_1".json"
         ganache -a 200 -m '' -e 99999999999 --chain.chainId 1337 --p 8545 > /dev/null 2>&1 &
         ganache_pid=$!
         sleep 2

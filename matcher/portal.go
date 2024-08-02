@@ -8,10 +8,10 @@ import (
 )
 
 func (m *Matcher) SendBatch(batch *Batch) {
-	//IMHERETODEBUG_logger.Debug("[%v] Send batch::%v, amount: %v, side: %v, price: %v\n", m.Address.String()[:5], batch.BatchID.String()[:5], batch.Amount, batch.Side, batch.Price)
+	_logger.Debug("[%v] Send batch::%v, amount: %v, side: %v, price: %v\n", m.Address.String()[:5], batch.BatchID.String()[:5], batch.Amount, batch.Side, batch.Price)
 	// for _, _order := range batch.Orders {
 	// 	if !_order.IsValidOrder(m.Address) {
-	// 		//IMHERETODEBUG_logger.Error("Order::%v invalid signature\n", _order.OriginalOrder.OrderID.String())
+	// 		_logger.Error("Order::%v invalid signature\n", _order.OriginalOrder.OrderID.String())
 	// 		log.Fatal("error")
 	// 	}
 	// }
@@ -44,7 +44,7 @@ func (m *Matcher) SendBatch(batch *Batch) {
 	retryTime := 0
 	for retry {
 		if retryTime > 10 {
-			//IMHERETODEBUG_logger.Error("SendBatch retry more than 10 times\n")
+			_logger.Error("SendBatch retry more than 10 times\n")
 			return
 		}
 
@@ -54,7 +54,7 @@ func (m *Matcher) SendBatch(batch *Batch) {
 			m.Mux.Unlock()
 			m.SuperMatcherInstance.Process()
 			retry = false
-			//IMHERETODEBUG_logger.Debug("Batch::%v (OK)\n", batch.BatchID.String())
+			_logger.Debug("Batch::%v (OK)\n", batch.BatchID.String())
 		} else if _status == "RESIGN" && len(_validOrders) != 0 {
 			retry = true
 			retryTime += 1
@@ -87,8 +87,8 @@ func (m *Matcher) SendBatch(batch *Batch) {
 				Owner:   m.Address,
 			}
 			_newBatch.Sign(m.PrivateKey)
-			//IMHERETODEBUG_logger.Debug("Batch::%v (RESIGN) --> Batch::%v\n", batch.BatchID.String(), _id.String())
-			//IMHERETODEBUG_logger.Debug(
+			_logger.Debug("Batch::%v (RESIGN) --> Batch::%v\n", batch.BatchID.String(), _id.String())
+			_logger.Debug(
 				"[%v] Send batch::%v, amount: %v, side: %v, price: %v\n",
 				m.Address.String()[:5],
 				_newBatch.BatchID.String()[:5],
@@ -106,7 +106,7 @@ func (m *Matcher) SendBatch(batch *Batch) {
 				Signature: _newBatch.Signature,
 			})
 		} else {
-			//IMHERETODEBUG_logger.Debug("Batch::%v is empty (cook)\n", batch.BatchID.String())
+			_logger.Debug("Batch::%v is empty (cook)\n", batch.BatchID.String())
 			retry = false
 		}
 	}

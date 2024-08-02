@@ -66,6 +66,7 @@ contract Onchain {
     event BatchTimestamp(bytes16, uint256);
     event BatchMatchAmountAndProfit(uint256, uint256);
     event MatchedPrice(uint256);
+    event BatchRawProfit(bytes16, uint256);
     // --- Log Events ---
     event LogString(string);
     event LogBytes32(bytes32);
@@ -321,6 +322,8 @@ contract Onchain {
             // Statistical
             uint256 matchPrice = (bidBatch.price + askBatch.price) / 2;
             emit BatchMatchAmountAndProfit(bidBatch.amount, bidBatch.price - matchPrice); 
+            emit BatchRawProfit(bidBatch.batchID, bidBatch.price - matchPrice);
+            emit BatchRawProfit(askBatch.batchID, bidBatch.price - matchPrice);
             emit MatchedPrice(matchPrice);
 
             _batchMapping[bidBatchID].time = block.timestamp;

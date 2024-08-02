@@ -153,7 +153,7 @@ func (c *TradeAppClient) startWatching(ch *client.Channel) {
 	go func() {
 		err := ch.Watch(c)
 		if err != nil {
-			//IMHERETODEBUG_logger.Debug("Watcher returned with error: %v\n", err)
+			_logger.Debug("Watcher returned with error: %v\n", err)
 		}
 	}()
 }

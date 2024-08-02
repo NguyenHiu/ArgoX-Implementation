@@ -81,6 +81,7 @@ type Matcher struct {
 	CurrentPrice            *big.Int
 	IsGetPriceCurve         bool
 	TotalProfitLocal        *big.Int
+	TotalRawProfitLocal     *big.Int
 	/* MATCHING ANALYSIS */
 
 }
@@ -158,6 +159,7 @@ func NewMatcher(
 		CurrentPrice:            new(big.Int),
 		IsGetPriceCurve:         false,
 		TotalProfitLocal:        big.NewInt(0),
+		TotalRawProfitLocal:     big.NewInt(0),
 		/* MATCHING ANALYSIS */
 	}
 }
@@ -250,7 +252,7 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			if order.Side == constants.ASK {
 				_side = "ask"
 			}
-			//IMHERETODEBUG_logger.Info("[%v::%v] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
+			_logger.Info("[%v::%v] Receive an order::%v::%v, price: %v, amount: %v, %v\n", m.ID.String()[:5], m.Address.String()[:5], order.OrderID.String()[:6], order.Owner.String()[:5], order.Price, order.Amount, _side)
 
 			m.CreateTime[order.OrderID] = time.Now().Unix()
 
@@ -276,12 +278,12 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 			}
 
 			if _newOrder.Data.Amount.Cmp(order.Amount) != 0 {
-				//IMHERETODEBUG_logger.Debug("Damn, it;s fking wrong\n")
+				_logger.Debug("Damn, it;s fking wrong\n")
 				log.Fatal("SUPER ERROR")
 			}
 
 			if _newOrder.Data.From.String() != order.OrderID.String() {
-				//IMHERETODEBUG_logger.Debug("Damn, it;s fking wrong (ID) \n")
+				_logger.Debug("Damn, it;s fking wrong (ID) \n")
 				log.Fatal("SUPER ERROR")
 			}
 

@@ -1,6 +1,7 @@
 package supermatcher
 
 import (
+	"log"
 	"math/big"
 	"sync"
 
@@ -98,7 +99,7 @@ func (sm *SuperMatcher) Process() {
 
 	// The batch is already validated when being appended to the sm.Batches
 
-	// //IMHERETODEBUG_logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
+	// _logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
 
 	// Send batch to smart contract
 	sm.SendBatch(batch)
@@ -107,19 +108,19 @@ func (sm *SuperMatcher) Process() {
 func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 	// 1. valid owner: owner is a matcher & the signature is valid
 	if !sm.isMatcher(batch.Owner) {
-		//IMHERETODEBUG_logger.Debug("Batch::%v (Invalid Matcher)\n", batch.BatchID)
+		_logger.Debug("Batch::%v (Invalid Matcher)\n", batch.BatchID)
 		return false
 	}
 
 	if !batch.IsValidSignature() {
-		//IMHERETODEBUG_logger.Debug("Batch::%v (Invalid Batch's Signature)\n", batch.BatchID)
+		_logger.Debug("Batch::%v (Invalid Batch's Signature)\n", batch.BatchID)
 		return false
 	}
 
 	// 2. check signatures of orders in the batch
 	for idx, order := range batch.Orders {
 		if !order.IsValidOrder(batch.Owner) {
-			//IMHERETODEBUG_logger.Debug("Batch::%v (Invalid Order at %v) \n", batch.BatchID, idx)
+			_logger.Debug("Batch::%v (Invalid Order at %v) \n", batch.BatchID, idx)
 			return false
 		}
 	}
@@ -136,13 +137,13 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 	if sm.CheckValidBatch(batch) {
 		sm.Mutex.Lock()
 		defer sm.Mutex.Unlock()
-		//IMHERETODEBUG_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
+		_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
 
 		// Filter orders in the batch
 		validOrders := []*ExpandOrder{}
 		for idx, order := range batch.Orders {
 			if sm.isExists(order) {
-				//IMHERETODEBUG_logger.Debug("Order::%v at %v has already existed (total: %v)\n", order.OriginalOrder.OrderID.String(), idx, len(batch.Orders))
+				_logger.Debug("Order::%v at %v has already existed (total: %v)\n", order.OriginalOrder.OrderID.String(), idx, len(batch.Orders))
 			} else {
 				sm.addOrder(order)
 				validOrders = append(validOrders, order)
@@ -151,7 +152,7 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 
 		// If the batch is empty, stop
 		if len(validOrders) == 0 {
-			//IMHERETODEBUG_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
+			_logger.Debug("Batch (%v) is empty\n", batch.BatchID)
 			return "REMOVE", nil
 		}
 
@@ -178,22 +179,39 @@ func (sm *SuperMatcher) GetLeftAmount(id uuid.UUID) *big.Int {
 	return big.NewInt(-1)
 }
 
+// status:
+//   - 0: not changed, but failed
+//   - 1: changed, but failed
+//   - 2: changed, but success
 func (sm *SuperMatcher) MatchAnOrder(
-	bidId uuid.UUID, bidAmount, bidTotalAmount *big.Int,
-	askId uuid.UUID, askAmount, askTotalAmount *big.Int,
-) (bool, *big.Int, *big.Int) {
+	bidId uuid.UUID, bidTotalAmount *big.Int,
+	askId uuid.UUID, askTotalAmount *big.Int,
+	amount *big.Int,
+) (int, int, *big.Int, *big.Int) {
 	sm.Mutex.Lock()
 	defer sm.Mutex.Unlock()
 
-	isValidBid, bidLeftAmount := sm.matchAnOrder(bidId, bidAmount, bidTotalAmount)
-	isValidAsk, askLeftAmount := sm.matchAnOrder(askId, askAmount, askTotalAmount)
-	if !isValidBid || !isValidAsk {
-		return false, bidLeftAmount, askLeftAmount
-	}
-	sm.MatchedOrders[bidId].Sub(sm.MatchedOrders[bidId], bidAmount)
-	sm.MatchedOrders[askId].Sub(sm.MatchedOrders[askId], askAmount)
+	isValidBid, bidLeftAmount := sm.matchAnOrder(bidId, amount, bidTotalAmount)
+	isValidAsk, askLeftAmount := sm.matchAnOrder(askId, amount, askTotalAmount)
 
-	return true, sm.MatchedOrders[bidId], sm.MatchedOrders[askId]
+	if !isValidBid || !isValidAsk {
+		bidStatus := 0
+		if !isValidBid {
+			bidStatus = 1
+		}
+		askStatus := 0
+		if !isValidAsk {
+			askStatus = 1
+		}
+		return bidStatus, askStatus, bidLeftAmount, askLeftAmount
+	}
+	if bidLeftAmount.Cmp(amount) != 0 || askLeftAmount.Cmp(amount) != 0 {
+		log.Fatal("GOT INVALID AMOUN SUPER MATCHER	")
+	}
+	sm.MatchedOrders[bidId].Sub(sm.MatchedOrders[bidId], amount)
+	sm.MatchedOrders[askId].Sub(sm.MatchedOrders[askId], amount)
+
+	return 2, 2, sm.MatchedOrders[bidId], sm.MatchedOrders[askId]
 }
 
 func (sm *SuperMatcher) matchAnOrder(id uuid.UUID, amount, totalAmount *big.Int) (bool, *big.Int) {

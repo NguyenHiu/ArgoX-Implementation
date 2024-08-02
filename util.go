@@ -103,7 +103,7 @@ func PrintBalances(tokenAddr common.Address, clientNode bind.ContractBackend, ad
 		if err != nil {
 			log.Fatal(err)
 		}
-		// //IMHERETODEBUG_logger.Info("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
+		// _logger.Info("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
 		fmt.Printf("[%v] gvn token: %v\n", addrs[i].String()[:5], bal)
 	}
 }
@@ -138,6 +138,9 @@ func ExportRunLogs(
 	totalProfitLocal int,
 	totalProfitOnchain int,
 	noBatches int,
+	totalRawProfitLocal int,
+	totalRawProfitOnchain int,
+	sendOrderTime float64,
 	filename string,
 ) error {
 	data := struct {
@@ -155,6 +158,9 @@ func ExportRunLogs(
 		TotalProfitLocal            int
 		TotalProfitOnchain          int
 		NoBatches                   int
+		TotalRawProfitLocal         int
+		TotalRawProfitOnchain       int
+		SendOrderTime               int
 	}{
 		AliceGas:                    aliceGas,
 		SuperMatcherGas:             smGas,
@@ -170,6 +176,9 @@ func ExportRunLogs(
 		TotalProfitLocal:            totalProfitLocal,
 		TotalProfitOnchain:          totalProfitOnchain,
 		NoBatches:                   noBatches,
+		TotalRawProfitLocal:         totalRawProfitLocal,
+		TotalRawProfitOnchain:       totalRawProfitOnchain,
+		SendOrderTime:               int(sendOrderTime),
 	}
 
 	file, err := os.Create(filename)

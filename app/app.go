@@ -68,7 +68,7 @@ func (a *VerifyApp) DecodeData(r io.Reader) (channel.Data, error) {
 		// Get order
 		order := &Order{}
 		if err := order.Decode_TransferLightning(data); err != nil {
-			//IMHERETODEBUG_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
+			_logger.Error("Order Decode Transfer Lightning fail, err: %v\n", err)
 			return nil, err
 		}
 		// Store order
@@ -131,26 +131,26 @@ func (a *VerifyApp) ValidInit(p *channel.Params, s *channel.State) error {
 func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.State, idx channel.Index) error {
 	err := channel.AssetsAssertEqual(from.Assets, to.Assets)
 	if err != nil {
-		//IMHERETODEBUG_logger.Error("invalid assets: %v\n", err)
+		_logger.Error("invalid assets: %v\n", err)
 		return fmt.Errorf("invalid assets: %v", err)
 	}
 
 	// Get data
 	fromData, ok := from.Data.(*VerifyAppData)
 	if !ok {
-		//IMHERETODEBUG_logger.Error("from state: invalid data type: %T\n", from.Data)
+		_logger.Error("from state: invalid data type: %T\n", from.Data)
 		return fmt.Errorf("from state: invalid data type: %T", from.Data)
 	}
 
 	toData, ok := to.Data.(*VerifyAppData)
 	if !ok {
-		//IMHERETODEBUG_logger.Error("to state: invalid data type: %T\n", from.Data)
+		_logger.Error("to state: invalid data type: %T\n", from.Data)
 		return fmt.Errorf("to state: invalid data type: %T", from.Data)
 	}
 
 	// Check change
 	if len(toData.Orders) < len(fromData.Orders) {
-		//IMHERETODEBUG_logger.Error("invalid transition: the number of orders in new state is incorrect\n")
+		_logger.Error("invalid transition: the number of orders in new state is incorrect\n")
 		return fmt.Errorf("invalid transition: the number of orders in new state is incorrect")
 	}
 
@@ -160,13 +160,13 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 		if !ok {
 			// Validate new order
 			if !v.IsValidSignature() {
-				//IMHERETODEBUG_logger.Error("invalid transition: the new order is not valid\n")
+				_logger.Error("invalid transition: the new order is not valid\n")
 				return fmt.Errorf("invalid transition: the new order is not valid")
 			}
 		} else {
 			// Check if the order stays the same
 			if !v.Equal(_v) {
-				//IMHERETODEBUG_logger.Error("invalid transition: \n")
+				_logger.Error("invalid transition: \n")
 				return fmt.Errorf("invalid transition: ")
 			}
 
@@ -180,8 +180,8 @@ func (a *VerifyApp) ValidTransition(params *channel.Params, from, to *channel.St
 					total = new(big.Int).Add(total, trade.Amount)
 				}
 			}
-			// //IMHERETODEBUG_logger.Debug("total: %v\n", total)
-			// //IMHERETODEBUG_logger.Debug("v.Amount: %v\n", v.Amount)
+			// _logger.Debug("total: %v\n", total)
+			// _logger.Debug("v.Amount: %v\n", v.Amount)
 			if total.Cmp(v.Amount) == 1 {
 				return fmt.Errorf("invalid transition: the amount accumulate is over the order")
 			}
@@ -214,7 +214,7 @@ func (a *VerifyApp) SendNewOrders(s *channel.State, orders []*Order) error {
 
 	for _, order := range orders {
 		if order.OrderID == EndID {
-			//IMHERETODEBUG_logger.Debug("Got final order\n")
+			_logger.Debug("Got final order\n")
 			s.IsFinal = true
 			s.Balances = d.computeFinalBalances(s.Balances)
 		}

@@ -19,7 +19,7 @@ func (sm *SuperMatcher) SendBatch(batch *Batch) {
 	if batch.Side == constants.ASK {
 		_side = "ask"
 	}
-	//IMHERETODEBUG_logger.Info("Sends batch::%v::%v::%v::%v to onchain\n", batch.BatchID.String()[:5], batch.Owner.String()[:5], batch.Amount, _side)
+	_logger.Info("Sends batch::%v::%v::%v::%v to onchain\n", batch.BatchID.String()[:5], batch.Owner.String()[:5], batch.Amount, _side)
 
 	sm.prepareNonceAndGasPrice(0, 900000)
 	_signature := util.CorrectSignToOnchain(batch.Signature)

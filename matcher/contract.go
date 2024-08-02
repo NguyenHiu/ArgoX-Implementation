@@ -45,7 +45,7 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			// //IMHERETODEBUG_logger.Debug("Matcher::%v receive an fullfill event batch::%v\n", m.ID.String()[:6], id.String())
+			// _logger.Debug("Matcher::%v receive an fullfill event batch::%v\n", m.ID.String()[:6], id.String())
 			m.Mux.Lock()
 			batch, ok := m.Batches[id]
 			m.Mux.Unlock()
@@ -54,7 +54,7 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 			}
 
 			if batch.Side == constants.BID {
-				//IMHERETODEBUG_logger.Debug("Matched, amount: %v\n", batch.Amount)
+				_logger.Debug("Matched, amount: %v\n", batch.Amount)
 			}
 
 			onchainOrders := []onchain.OnchainOrder{}
@@ -63,17 +63,17 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 				for _, trade := range order.Trades {
 					tData, err := trade.Encode_TransferBatching()
 					if err != nil {
-						//IMHERETODEBUG_logger.Error("sending batch's detail got error, encode trade, err: %v\n", err)
+						_logger.Error("sending batch's detail got error, encode trade, err: %v\n", err)
 					}
 					if err := binary.Write(trades, binary.BigEndian, tData); err != nil {
-						//IMHERETODEBUG_logger.Error("sending batch's detail, hash a trade got error, err: %v\n", err)
+						_logger.Error("sending batch's detail, hash a trade got error, err: %v\n", err)
 					}
 				}
 				tradeHash := crypto.Keccak256Hash(trades.Bytes())
 
 				oData, err := order.OriginalOrder.Encode_TransferBatching()
 				if err != nil {
-					//IMHERETODEBUG_logger.Error("sending batch's detail, hash original order got error, err: %v\n", err)
+					_logger.Error("sending batch's detail, hash original order got error, err: %v\n", err)
 				}
 				originalOrderHash := crypto.Keccak256Hash(oData)
 
@@ -93,9 +93,9 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 			m.prepareNonceAndGasPrice(0, 900000)
 			_, err := m.OnchainInstance.SubmitOrderDetails(m.Auth, vLogs.Arg0, onchainOrders)
 			if err != nil {
-				//IMHERETODEBUG_logger.Error("Submit Error, err: %v\n", err)
+				_logger.Error("Submit Error, err: %v\n", err)
 			}
-			//IMHERETODEBUG_logger.Debug("Matcher::%v, Submit batch's details, batch::%v\n", m.ID.String()[:6], id.String())
+			_logger.Debug("Matcher::%v, Submit batch's details, batch::%v\n", m.ID.String()[:6], id.String())
 			// m.Mux.Unlock()
 		}
 	}

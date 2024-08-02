@@ -27,7 +27,7 @@ func (w *Worker) SubmitMatchEvent(bidBatchID, askBatchID uuid.UUID) {
 	var aArray [16]byte
 	copy(aArray[:], a)
 
-	//IMHERETODEBUG_logger.Info("Submit a match event\n")
+	_logger.Info("Submit a match event\n")
 	_, err = w.OnchainIstance.Matching(w.Auth, bArray, aArray)
 	if err != nil {
 		log.Fatal(err)
@@ -55,7 +55,7 @@ func (w *Worker) WatchAcceptBatch() {
 				log.Fatal(err)
 			}
 
-			//IMHERETODEBUG_logger.Info("Receive a batch::%v\n", batchID)
+			_logger.Info("Receive a batch::%v\n", batchID)
 
 			w.addBatch(&Batch{
 				BatchID: batchID,
@@ -80,7 +80,7 @@ func (w *Worker) WatchFullfilMatch() {
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			// //IMHERETODEBUG_logger.Info("[Fullfill] Batch::%v\n", id.String())
+			// _logger.Info("[Fullfill] Batch::%v\n", id.String())
 			batch, ok := w.Batches[id]
 			if ok {
 				w.Mux.Lock()

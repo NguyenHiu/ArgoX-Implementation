@@ -59,27 +59,27 @@ func (m *Matcher) NewBatch(_price, _amount *big.Int, _side bool, _orders []*Matc
 		}
 
 		if _expandOrder.OriginalOrder.Amount.Cmp(new(big.Int).Add(_totalTrade, order.Data.Amount)) == -1 {
-			//IMHERETODEBUG_logger.Debug("order.Data.From: %v\n", order.Data.From)
-			//IMHERETODEBUG_logger.Debug("Original's id: %v\n", _expandOrder.OriginalOrder.OrderID.String())
-			//IMHERETODEBUG_logger.Debug("Original: %v, %v, %v\n", _expandOrder.OriginalOrder.OrderID.String(), _expandOrder.OriginalOrder.Price, _expandOrder.OriginalOrder.Amount)
-			//IMHERETODEBUG_logger.Debug("order.Data.Amount: %v\n", order.Data.Amount)
-			//IMHERETODEBUG_logger.Debug("Shadow: %v, %v\n", _expandOrder.ShadowOrder.Price, _expandOrder.ShadowOrder.Amount)
-			//IMHERETODEBUG_logger.Debug("_totalTrade: %v\n", _totalTrade)
+			_logger.Debug("order.Data.From: %v\n", order.Data.From)
+			_logger.Debug("Original's id: %v\n", _expandOrder.OriginalOrder.OrderID.String())
+			_logger.Debug("Original: %v, %v, %v\n", _expandOrder.OriginalOrder.OrderID.String(), _expandOrder.OriginalOrder.Price, _expandOrder.OriginalOrder.Amount)
+			_logger.Debug("order.Data.Amount: %v\n", order.Data.Amount)
+			_logger.Debug("Shadow: %v, %v\n", _expandOrder.ShadowOrder.Price, _expandOrder.ShadowOrder.Amount)
+			_logger.Debug("_totalTrade: %v\n", _totalTrade)
 			log.Fatal("Check creates an invalid batch\n")
 		}
 
 		if !_expandOrder.IsValidOrder(m.Address) {
 			for _, _trade := range _expandOrder.Trades {
-				//IMHERETODEBUG_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
+				_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
 			}
-			//IMHERETODEBUG_logger.Debug("Original: %v, %v, %v\n", _expandOrder.OriginalOrder.OrderID.String(), _expandOrder.OriginalOrder.Price, _expandOrder.OriginalOrder.Amount)
-			//IMHERETODEBUG_logger.Debug("Shadow: %v, %v\n", _expandOrder.ShadowOrder.Price, _expandOrder.ShadowOrder.Amount)
+			_logger.Debug("Original: %v, %v, %v\n", _expandOrder.OriginalOrder.OrderID.String(), _expandOrder.OriginalOrder.Price, _expandOrder.OriginalOrder.Amount)
+			_logger.Debug("Shadow: %v, %v\n", _expandOrder.ShadowOrder.Price, _expandOrder.ShadowOrder.Amount)
 			_totalTrade := new(big.Int)
 			for _, _tradeOrder := range _expandOrder.Trades {
 				_totalTrade.Add(_totalTrade, _tradeOrder.Amount)
 			}
-			//IMHERETODEBUG_logger.Debug("order.Data.Amount: %v\n", order.Data.Amount)
-			//IMHERETODEBUG_logger.Debug("_totalTrade: %v\n", _totalTrade)
+			_logger.Debug("order.Data.Amount: %v\n", order.Data.Amount)
+			_logger.Debug("_totalTrade: %v\n", _totalTrade)
 			log.Fatal("NewBatch creates an invalid batch\n")
 		}
 
@@ -265,7 +265,7 @@ func (b *Batch) Sign(_prvkey *ecdsa.PrivateKey) error {
 
 // IDEA: batching orders having the same price
 func (m *Matcher) batching() []*Batch {
-	//IMHERETODEBUG_logger.Debug("batching...\n")
+	_logger.Debug("batching...\n")
 	batches := []*Batch{}
 
 	m.Mux.Lock()
@@ -319,10 +319,10 @@ func (m *Matcher) batching() []*Batch {
 		for _, _order := range batch.Orders {
 			if !_order.IsValidOrder(m.Address) || _order.OriginalOrder.Amount.Cmp(_order.ShadowOrder.Amount) == -1 {
 				for _, _trade := range _order.Trades {
-					//IMHERETODEBUG_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
+					_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
 				}
-				//IMHERETODEBUG_logger.Debug("Original: %v, %v, %v\n", _order.OriginalOrder.OrderID.String(), _order.OriginalOrder.Price, _order.OriginalOrder.Amount)
-				//IMHERETODEBUG_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
+				_logger.Debug("Original: %v, %v, %v\n", _order.OriginalOrder.OrderID.String(), _order.OriginalOrder.Price, _order.OriginalOrder.Amount)
+				_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
 				log.Fatal("Batching process creates invalid order\n")
 			}
 		}
@@ -349,10 +349,10 @@ func (m *Matcher) batching() []*Batch {
 		for _, _order := range batch.Orders {
 			if !_order.IsValidOrder(m.Address) || _order.OriginalOrder.Amount.Cmp(_order.ShadowOrder.Amount) == -1 {
 				for _, _trade := range _order.Trades {
-					//IMHERETODEBUG_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
+					_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
 				}
-				//IMHERETODEBUG_logger.Debug("Original: %v, %v, %v\n", _order.OriginalOrder.OrderID.String(), _order.OriginalOrder.Price, _order.OriginalOrder.Amount)
-				//IMHERETODEBUG_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
+				_logger.Debug("Original: %v, %v, %v\n", _order.OriginalOrder.OrderID.String(), _order.OriginalOrder.Price, _order.OriginalOrder.Amount)
+				_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
 				log.Fatal("Batching process creates invalid order\n")
 			}
 		}
@@ -361,7 +361,7 @@ func (m *Matcher) batching() []*Batch {
 		batches = append(batches, batch)
 	}
 
-	//IMHERETODEBUG_logger.Debug("got %v batch(es)\n", len(batches))
+	_logger.Debug("got %v batch(es)\n", len(batches))
 	return batches
 }
 
