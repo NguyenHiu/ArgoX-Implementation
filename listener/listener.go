@@ -21,18 +21,27 @@ var _logger = logger.NewLogger("Listener", logger.Yellow, logger.Bold)
 type Listener struct {
 	TotalTimeOnchain          int
 	TotalMatchedAmountOnchain *big.Int
+	NumberOfMatchedOrder      int64
 	PriceCurveOnchain         []*big.Int
 	CurrentPrice              *big.Int
 	IsGetPriceCurve           bool
+	TotalProfitOnchain        *big.Int
+	TotalRawProfitOnchain     *big.Int
+
+	batchPriceMapping map[uuid.UUID]*big.Int
 }
 
 func NewListener() *Listener {
 	return &Listener{
 		TotalTimeOnchain:          0,
 		TotalMatchedAmountOnchain: new(big.Int),
+		NumberOfMatchedOrder:      0,
 		PriceCurveOnchain:         []*big.Int{},
 		CurrentPrice:              new(big.Int),
 		IsGetPriceCurve:           false,
+		TotalProfitOnchain:        new(big.Int),
+		TotalRawProfitOnchain:     new(big.Int),
+		batchPriceMapping:         make(map[uuid.UUID]*big.Int),
 	}
 }
 
@@ -61,6 +70,7 @@ func (l *Listener) StartListener(onchainAddr common.Address) {
 	go l.WatchLogMatchingTimestamp(instance, &opts)
 	go l.WatchMatchPrice(instance, &opts)
 	go l.WatchMatchAmount(instance, &opts)
+	go l.WatchBatchRawProfit(instance, &opts)
 }
 
 // Statistical
@@ -78,8 +88,8 @@ func (l *Listener) GetPriceCurve() {
 
 // Statistical
 func (l *Listener) WatchMatchAmount(instance *onchain.Onchain, opt *bind.WatchOpts) {
-	logs := make(chan *onchain.OnchainBatchMatchAmount)
-	sub, err := instance.WatchBatchMatchAmount(opt, logs)
+	logs := make(chan *onchain.OnchainBatchMatchAmountAndProfit)
+	sub, err := instance.WatchBatchMatchAmountAndProfit(opt, logs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,6 +106,12 @@ func (l *Listener) WatchMatchAmount(instance *onchain.Onchain, opt *bind.WatchOp
 			l.TotalMatchedAmountOnchain.Add(
 				l.TotalMatchedAmountOnchain,
 				vLogs.Arg0,
+			)
+			vLogs.Arg1.Mul(vLogs.Arg1, vLogs.Arg0)
+			vLogs.Arg1.Mul(vLogs.Arg1, big.NewInt(2))
+			l.TotalProfitOnchain.Add(
+				l.TotalProfitOnchain,
+				vLogs.Arg1,
 			)
 		}
 	}
@@ -115,6 +131,25 @@ func (l *Listener) WatchMatchPrice(instance *onchain.Onchain, opt *bind.WatchOpt
 			log.Fatal(err)
 		case vLogs := <-logs:
 			l.CurrentPrice = vLogs.Arg0
+		}
+	}
+}
+
+// Statistical
+func (l *Listener) WatchBatchRawProfit(instance *onchain.Onchain, opt *bind.WatchOpts) {
+	logs := make(chan *onchain.OnchainBatchRawProfit)
+	sub, err := instance.WatchBatchRawProfit(opt, logs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sub.Unsubscribe()
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+		case vLogs := <-logs:
+			id, _ := uuid.FromBytes(vLogs.Arg0[:])
+			l.batchPriceMapping[id] = vLogs.Arg1
 		}
 	}
 }
@@ -175,6 +210,17 @@ func (l *Listener) WatchReceivedBatchDetails(instance *onchain.Onchain, opt *bin
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Details] Batch::%v\n", id.String())
+			l.NumberOfMatchedOrder += vLogs.Arg1.Int64()
+
+			if price, ok := l.batchPriceMapping[id]; !ok {
+				log.Fatal("Price not found")
+			} else {
+				l.TotalRawProfitOnchain.Add(
+					l.TotalRawProfitOnchain,
+					new(big.Int).Mul(price, vLogs.Arg1),
+				)
+			}
+
 		}
 	}
 }

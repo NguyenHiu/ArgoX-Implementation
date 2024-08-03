@@ -117,6 +117,10 @@ func main() {
 		<-time.After(time.Millisecond * 500)
 	}
 
+	// Onchain
+	_listenerInstance.IsGetPriceCurve = true
+	go _listenerInstance.GetPriceCurve()
+
 	// Send orders
 	_FILENAME_ := "./demo_orders_1.json"
 	_logger.Debug("Send Orders...\n")

@@ -3,6 +3,7 @@ package orderApp
 import (
 	"encoding/binary"
 	"io"
+	"log"
 
 	"github.com/google/uuid"
 	"perun.network/go-perun/channel"
@@ -57,6 +58,8 @@ func (d *OrderAppData) SendNewOrders(orders []*Order) {
 		if !ok {
 			d.Orders = append(d.Orders, order)
 			d.OrdersMapping[order.OrderID] = order
+		} else {
+			log.Fatal("Order already exists")
 		}
 	}
 }
