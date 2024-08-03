@@ -40,5 +40,8 @@ Thumbs.db
 
 contracts/perun-eth-contracts
 contracts/openzeppelin-contracts
-# data/result
-data/storage
+# Ignore everything in the data folder
+data/*
+
+# Unignore files with the .go extension in the data folder
+!data/*.go
