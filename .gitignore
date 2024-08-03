@@ -44,4 +44,4 @@ contracts/openzeppelin-contracts
 data/*
 
 # Unignore files with the .go extension in the data folder
-!data/*.go
+# !data/*.go
