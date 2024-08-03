@@ -13,7 +13,7 @@
 # Testing
 *.test
 *.test.*
-test_*
+# test_*
 
 # Dependency directories
 vendor/
@@ -40,8 +40,6 @@ Thumbs.db
 
 contracts/perun-eth-contracts
 contracts/openzeppelin-contracts
-data/storage
-
 # Ignore everything in the data folder
 data/*
 

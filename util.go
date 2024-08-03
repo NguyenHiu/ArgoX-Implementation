@@ -133,28 +133,52 @@ func ExportRunLogs(
 	onchainMatchedAmount *big.Int,
 	localMatchTime,
 	onchainMatchTime int,
+	numberMatchedOrderLocal int,
+	numberMatchedOrderOnchain int,
+	totalProfitLocal int,
+	totalProfitOnchain int,
+	noBatches int,
+	totalRawProfitLocal int,
+	totalRawProfitOnchain int,
+	sendOrderTime float64,
 	filename string,
 ) error {
 	data := struct {
-		AliceGas             int
-		SuperMatcherGas      int
-		ReporterGas          int
-		WorkerGas            int
-		MatcherGas           int
-		LocalMatchedAmount   *big.Int
-		OnchainMatchedAmount *big.Int
-		LocalMatchTime       int
-		OnchainMatchTime     int
+		AliceGas                    int
+		SuperMatcherGas             int
+		ReporterGas                 int
+		WorkerGas                   int
+		MatcherGas                  int
+		LocalMatchedAmount          *big.Int
+		OnchainMatchedAmount        *big.Int
+		LocalMatchTime              int
+		OnchainMatchTime            int
+		NumberOfMatchedOrderLocal   int
+		NumberOfMatchedOrderOnchain int
+		TotalProfitLocal            int
+		TotalProfitOnchain          int
+		NoBatches                   int
+		TotalRawProfitLocal         int
+		TotalRawProfitOnchain       int
+		SendOrderTime               int
 	}{
-		AliceGas:             aliceGas,
-		SuperMatcherGas:      smGas,
-		ReporterGas:          rGas,
-		WorkerGas:            wGas,
-		MatcherGas:           mGas,
-		LocalMatchedAmount:   localMatchedAmount,
-		OnchainMatchedAmount: onchainMatchedAmount,
-		LocalMatchTime:       localMatchTime,
-		OnchainMatchTime:     onchainMatchTime,
+		AliceGas:                    aliceGas,
+		SuperMatcherGas:             smGas,
+		ReporterGas:                 rGas,
+		WorkerGas:                   wGas,
+		MatcherGas:                  mGas,
+		LocalMatchedAmount:          localMatchedAmount,
+		OnchainMatchedAmount:        onchainMatchedAmount,
+		LocalMatchTime:              localMatchTime,
+		OnchainMatchTime:            onchainMatchTime,
+		NumberOfMatchedOrderLocal:   numberMatchedOrderLocal,
+		NumberOfMatchedOrderOnchain: numberMatchedOrderOnchain,
+		TotalProfitLocal:            totalProfitLocal,
+		TotalProfitOnchain:          totalProfitOnchain,
+		NoBatches:                   noBatches,
+		TotalRawProfitLocal:         totalRawProfitLocal,
+		TotalRawProfitOnchain:       totalRawProfitOnchain,
+		SendOrderTime:               int(sendOrderTime),
 	}
 
 	file, err := os.Create(filename)

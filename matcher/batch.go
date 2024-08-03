@@ -271,6 +271,36 @@ func (m *Matcher) batching() []*Batch {
 	m.Mux.Lock()
 	defer m.Mux.Unlock()
 
+	// /** TEST STUPID BATCHING */
+	// if len(m.BidOrders) != 0 {
+	// 	_orders := []*MatcherOrder{}
+	// 	_amount := big.NewInt(0)
+	// 	_price := m.BidOrders[0].Data.Price
+	// 	_originalLength := len(m.BidOrders)
+	// 	for len(m.BidOrders) > _originalLength/2 {
+	// 		_amount.Add(_amount, m.BidOrders[0].Data.Amount)
+	// 		_orders = append(_orders, m.BidOrders[0].Clone())
+	// 		m.BidOrders = m.BidOrders[1:]
+	// 	}
+	// 	bidBatch := m.NewBatch(_price, _amount, constants.BID, _orders)
+	// 	bidBatch.Sign(m.PrivateKey)
+	// 	batches = append(batches, bidBatch)
+	// }
+	// if len(m.AskOrders) != 0 {
+	// 	_orders := []*MatcherOrder{}
+	// 	_amount := big.NewInt(0)
+	// 	_price := m.AskOrders[0].Data.Price
+	// 	_originalLength := len(m.AskOrders)
+	// 	for len(m.AskOrders) > _originalLength/2 {
+	// 		_amount.Add(_amount, m.AskOrders[0].Data.Amount)
+	// 		_orders = append(_orders, m.AskOrders[0].Clone())
+	// 		m.AskOrders = m.AskOrders[1:]
+	// 	}
+	// 	askBatch := m.NewBatch(_price, _amount, constants.BID, _orders)
+	// 	askBatch.Sign(m.PrivateKey)
+	// 	batches = append(batches, askBatch)
+	// }
+
 	threshold := len(m.BidOrders) / 4
 	for len(m.BidOrders) > threshold {
 		ord := m.BidOrders[0]

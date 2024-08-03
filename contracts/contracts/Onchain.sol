@@ -55,7 +55,7 @@ contract Onchain {
      * Events
      */
     event FullfilMatch(bytes16);
-    event ReceivedBatchDetails(bytes16);
+    event ReceivedBatchDetails(bytes16, uint256);
     event AcceptBatch(bytes16, uint256, uint256, bool);
     event PunishMatcher(address);
     event RemoveBatchOutOfDate(bytes16);
@@ -64,8 +64,9 @@ contract Onchain {
     event RevertBatch(bytes16);
     // Statistical
     event BatchTimestamp(bytes16, uint256);
-    event BatchMatchAmount(uint256);
+    event BatchMatchAmountAndProfit(uint256, uint256);
     event MatchedPrice(uint256);
+    event BatchRawProfit(bytes16, uint256);
     // --- Log Events ---
     event LogString(string);
     event LogBytes32(bytes32);
@@ -279,7 +280,7 @@ contract Onchain {
         }
 
         _batchMapping[batchID].time = 0;
-        emit ReceivedBatchDetails(batchID);
+        emit ReceivedBatchDetails(batchID, _ords.length);
     }
 
     function sendBatch(
@@ -319,8 +320,11 @@ contract Onchain {
             bidBatch.amount == askBatch.amount
         ) {
             // Statistical
-            emit BatchMatchAmount(bidBatch.amount);
-            emit MatchedPrice((bidBatch.price + askBatch.price) / 2);
+            uint256 matchPrice = (bidBatch.price + askBatch.price) / 2;
+            emit BatchMatchAmountAndProfit(bidBatch.amount, bidBatch.price - matchPrice); 
+            emit BatchRawProfit(bidBatch.batchID, bidBatch.price - matchPrice);
+            emit BatchRawProfit(askBatch.batchID, bidBatch.price - matchPrice);
+            emit MatchedPrice(matchPrice);
 
             _batchMapping[bidBatchID].time = block.timestamp;
             _batchMapping[askBatchID].time = block.timestamp;
