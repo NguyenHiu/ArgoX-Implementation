@@ -21,13 +21,31 @@ type Server struct {
 	superMatcher *supermatcher.SuperMatcher
 	listener     *listener.Listener
 	reporter     *reporter.Reporter
-	searcher     *worker.Worker
+	worker       *worker.Worker
 }
 
 func (s *Server) Start() {
-	http.HandleFunc("/get-user-data", s.getUserDataHandler)
-	http.HandleFunc("/get-matchers-data", s.getMatcherDataHandler)
-	http.HandleFunc("/send-order", s.sendOrderAndEndHandler)
+	// http.HandleFunc("/user/get-profile", s.getUserProfileHandler)
+	http.HandleFunc("/user/send-order", s.sendOrderHandler)
+	http.HandleFunc("/user/get-orders", s.getOrdersHandler)
+
+	// http.HandleFunc("/matcher/get-matchers-data", s.getMatcherProfileHandler)
+	http.HandleFunc("/matcher/get-local-order-book", s.getLocalOrderBookHandler)
+	http.HandleFunc("/matcher/get-batches", s.getBatchesHandler)
+	http.HandleFunc("/matcher/matching", s.matchingHandler)
+	http.HandleFunc("/matcher/batching", s.batchingHandler)
+	http.HandleFunc("/matcher/send-batches", s.sendBatchesHandler)
+	http.HandleFunc("/matcher/send-batch-details", s.sendBatchDetailsHandler)
+
+	http.HandleFunc("/super-matcher/get-batches", s.sm_getBatchesHandler)
+	http.HandleFunc("/super-matcher/send-batches", s.sm_sendBatchesHandler)
+
+	http.HandleFunc("/searcher/get-batch-book", s.getBatchBook)
+	http.HandleFunc("/searcher/match-batches", s.matchBatches)
+
+	http.HandleFunc("/reporter/get-matched-batches", s.getMatchedBatches)
+	http.HandleFunc("/reporter/report-batch", s.reportBatch)
+
 	addr := fmt.Sprintf(":%d", s.port)
 	log.Printf("Server listening on port %d", s.port)
 	log.Fatal(http.ListenAndServe(addr, nil))
@@ -39,7 +57,7 @@ func NewServer(port int,
 	superMatcher *supermatcher.SuperMatcher,
 	reporter *reporter.Reporter,
 	listener *listener.Listener,
-	searcher *worker.Worker,
+	worker *worker.Worker,
 ) *Server {
 	return &Server{
 		port:         port,
@@ -48,7 +66,7 @@ func NewServer(port int,
 		superMatcher: superMatcher,
 		listener:     listener,
 		reporter:     reporter,
-		searcher:     searcher,
+		worker:       worker,
 	}
 }
 

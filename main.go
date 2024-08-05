@@ -2,24 +2,20 @@ package main
 
 import (
 	"log"
-	"math/big"
 	"time"
 
 	"github.com/NguyenHiu/lightning-exchange/constants"
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
-	"github.com/NguyenHiu/lightning-exchange/data"
 	"github.com/NguyenHiu/lightning-exchange/deploy"
 	"github.com/NguyenHiu/lightning-exchange/listener"
 	"github.com/NguyenHiu/lightning-exchange/logger"
 	"github.com/NguyenHiu/lightning-exchange/matcher"
-	"github.com/NguyenHiu/lightning-exchange/orderApp"
 	"github.com/NguyenHiu/lightning-exchange/reporter"
 	"github.com/NguyenHiu/lightning-exchange/server"
 	"github.com/NguyenHiu/lightning-exchange/user"
 	"github.com/NguyenHiu/lightning-exchange/util"
 	"github.com/NguyenHiu/lightning-exchange/worker"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"perun.network/go-perun/backend/ethereum/wallet"
 )
 
 var _logger = logger.NewLogger("Main", logger.Red, logger.Bold)
@@ -60,7 +56,6 @@ func main() {
 		_logger.Error("Create reporter error, err: %v\n", err)
 	}
 	rp.Listening()
-	rp.Reporting()
 
 	// Worker
 	_logger.Debug("Start Worker...\n")
@@ -87,6 +82,7 @@ func main() {
 			sm,
 		)
 		matcher.Register()
+		go matcher.WatchingDemo(onchainInstance)
 		matchers = append(matchers, matcher)
 	}
 
@@ -121,20 +117,20 @@ func main() {
 	_listenerInstance.IsGetPriceCurve = true
 	go _listenerInstance.GetPriceCurve()
 
-	// Send orders
-	_FILENAME_ := "./demo_orders_1.json"
-	_logger.Debug("Send Orders...\n")
-	orders, _ := data.LoadOrders(_FILENAME_)
-	for _, order := range orders {
-		newOrder := orderApp.NewOrder(
-			big.NewInt(int64(order.Price)),
-			big.NewInt(int64(order.Amount)),
-			order.Side,
-			wallet.AsWalletAddr(alice.Address),
-		)
-		newOrder.Sign(alice.PrivateKey)
-		alice.SendNewOrders(matchers[0].ID, []*orderApp.Order{newOrder})
-	}
+	// // Send orders
+	// _FILENAME_ := "./demo_orders_1.json"
+	// _logger.Debug("Send Orders...\n")
+	// orders, _ := data.LoadOrders(_FILENAME_)
+	// for _, order := range orders {
+	// 	newOrder := orderApp.NewOrder(
+	// 		big.NewInt(int64(order.Price)),
+	// 		big.NewInt(int64(order.Amount)),
+	// 		order.Side,
+	// 		wallet.AsWalletAddr(alice.Address),
+	// 	)
+	// 	newOrder.Sign(alice.PrivateKey)
+	// 	alice.SendNewOrders(matchers[0].ID, []*orderApp.Order{newOrder})
+	// }
 
 	_server := server.NewServer(
 		7000,

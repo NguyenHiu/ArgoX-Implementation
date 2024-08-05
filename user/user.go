@@ -40,10 +40,11 @@ func NewConnection() *Connection {
 }
 
 type User struct {
-	ID          uuid.UUID
-	PrivateKey  string
-	Address     common.Address
-	Connections map[uuid.UUID]*Connection
+	ID            uuid.UUID
+	PrivateKey    string
+	Address       common.Address
+	Connections   map[uuid.UUID]*Connection
+	SentOrderList []uuid.UUID
 }
 
 func NewUser(privateKey string) *User {
@@ -51,10 +52,11 @@ func NewUser(privateKey string) *User {
 	privKey, _ := crypto.HexToECDSA(privateKey)
 
 	return &User{
-		ID:          _uuid,
-		PrivateKey:  privateKey,
-		Address:     crypto.PubkeyToAddress(privKey.PublicKey),
-		Connections: make(map[uuid.UUID]*Connection),
+		ID:            _uuid,
+		PrivateKey:    privateKey,
+		Address:       crypto.PubkeyToAddress(privKey.PublicKey),
+		Connections:   make(map[uuid.UUID]*Connection),
+		SentOrderList: make([]uuid.UUID, 0),
 	}
 }
 
@@ -93,6 +95,9 @@ func (u *User) AcceptedChannelAll() {
 
 func (u *User) SendNewOrders(matcherID uuid.UUID, newOrders []*orderApp.Order) {
 	_logger.Info("[%v] Sending new ORDER...\n", u.Address.String()[:5])
+	for _, order := range newOrders {
+		u.SentOrderList = append(u.SentOrderList, order.OrderID)
+	}
 	u.Connections[matcherID].OrderChannel.SendNewOrders(newOrders)
 }
 
@@ -119,22 +124,3 @@ func (u *User) ShutdownAll() {
 		v.TradeAppClient.Shutdown()
 	}
 }
-
-// func (u *User) prepareNonceAndGasPrice(value float64, gasLimit int) {
-// 	nodeClient, _ := ethclient.Dial(constants.CHAIN_URL)
-
-// 	nonce, err := nodeClient.PendingNonceAt(context.Background(), u.Address)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	gasPrice, err := nodeClient.SuggestGasPrice(context.Background())
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	m.Auth.Nonce = big.NewInt(int64(nonce))
-// 	m.Auth.GasPrice = gasPrice
-// 	m.Auth.Value = orderClient.EthToWei(big.NewFloat(float64(value)))
-// 	m.Auth.GasLimit = uint64(gasLimit)
-// }

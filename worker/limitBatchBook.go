@@ -29,8 +29,6 @@ func (w *Worker) addBatch(newBatch *Batch) {
 	w.Mux.Unlock()
 
 	w.Batches[newBatch.BatchID] = newBatch
-
-	w.matching()
 }
 
 func addBatchAccording(newBatch *Batch, batches []*Batch) []*Batch {
@@ -63,8 +61,6 @@ func (w *Worker) matching() {
 	if len(w.AskBatches) == 0 || len(w.BidBatches) == 0 {
 		return
 	}
-
-	// w.log()
 
 	w.Mux.Lock()
 	defer w.Mux.Unlock()

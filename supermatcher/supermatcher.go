@@ -28,6 +28,10 @@ type SuperMatcher struct {
 	MatchedOrders   map[uuid.UUID]*big.Int
 	Mutex           sync.Mutex
 	NoBatches       int
+
+	/// Demo
+	BatchResults []BatchResult
+	IsSent       map[uuid.UUID]bool
 }
 
 func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, chainID int) (*SuperMatcher, error) {
@@ -56,6 +60,8 @@ func NewSuperMatcher(onchain *onchain.Onchain, privateKeyHex string, port int, c
 		Orders:          make(map[uuid.UUID][]*ExpandOrder),
 		MatchedOrders:   make(map[uuid.UUID]*big.Int),
 		NoBatches:       0,
+		BatchResults:    []BatchResult{},
+		IsSent:          make(map[uuid.UUID]bool),
 	}
 
 	return sm, nil
@@ -84,45 +90,44 @@ func (sm *SuperMatcher) addOrder(order *ExpandOrder) {
 }
 
 func (sm *SuperMatcher) Process() {
-	sm.Mutex.Lock()
 
-	// Check if having any batch to be processed
-	if len(sm.Batches) == 0 {
+	for len(sm.Batches) != 0 {
+		// Get the first batch in queue
+		sm.Mutex.Lock()
+		batch := sm.Batches[0]
+		sm.Batches = sm.Batches[1:]
 		sm.Mutex.Unlock()
-		return
+
+		// Send batch to smart contract
+		sm.SendBatch(batch)
 	}
-
-	// Get the first batch in queue
-	batch := sm.Batches[0]
-	sm.Batches = sm.Batches[1:]
-	sm.Mutex.Unlock()
-
-	// The batch is already validated when being appended to the sm.Batches
-
-	// _logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
-
-	// Send batch to smart contract
-	sm.SendBatch(batch)
 }
 
-func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
+func (sm *SuperMatcher) CheckValidBatch(batch *Batch, BatchReq *BatchRequirements, OrdersReq *[]OrderRequirements) bool {
 	// 1. valid owner: owner is a matcher & the signature is valid
 	if !sm.isMatcher(batch.Owner) {
 		_logger.Debug("Batch::%v (Invalid Matcher)\n", batch.BatchID)
 		return false
 	}
+	BatchReq.IsValidMatcher = true
 
 	if !batch.IsValidSignature() {
 		_logger.Debug("Batch::%v (Invalid Batch's Signature)\n", batch.BatchID)
 		return false
 	}
+	BatchReq.IsValidSignature = true
 
 	// 2. check signatures of orders in the batch
 	for idx, order := range batch.Orders {
 		if !order.IsValidOrder(batch.Owner) {
+			*OrdersReq = append(*OrdersReq, OrderRequirements{})
 			_logger.Debug("Batch::%v (Invalid Order at %v) \n", batch.BatchID, idx)
 			return false
 		}
+		*OrdersReq = append(*OrdersReq, OrderRequirements{
+			IsValidSignature: true,
+		})
+
 	}
 
 	return true
@@ -134,7 +139,25 @@ func (sm *SuperMatcher) CheckValidBatch(batch *Batch) bool {
 //   - "RESIGN"
 //   - "INVALID_BATCH"
 func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
-	if sm.CheckValidBatch(batch) {
+	var batchReq BatchRequirements
+	var ordersReq []OrderRequirements = []OrderRequirements{}
+	var dupOrds []uuid.UUID = []uuid.UUID{}
+	defer func() {
+		_orderID := []uuid.UUID{}
+		for _, order := range batch.Orders {
+			_orderID = append(_orderID, order.OriginalOrder.OrderID)
+		}
+
+		sm.BatchResults = append(sm.BatchResults, BatchResult{
+			BatchID:         batch.BatchID,
+			Orders:          _orderID,
+			BatchStatus:     batchReq,
+			OrdersStatus:    ordersReq,
+			DuplicateOrders: dupOrds,
+		})
+	}()
+
+	if sm.CheckValidBatch(batch, &batchReq, &ordersReq) {
 		sm.Mutex.Lock()
 		defer sm.Mutex.Unlock()
 		_logger.Info("Get valid batch::%v\n", batch.BatchID.String())
@@ -144,6 +167,7 @@ func (sm *SuperMatcher) AddBatch(batch *Batch) (string, []*ExpandOrder) {
 		for idx, order := range batch.Orders {
 			if sm.isExists(order) {
 				_logger.Debug("Order::%v at %v has already existed (total: %v)\n", order.OriginalOrder.OrderID.String(), idx, len(batch.Orders))
+				dupOrds = append(dupOrds, order.OriginalOrder.OrderID)
 			} else {
 				sm.addOrder(order)
 				validOrders = append(validOrders, order)
@@ -225,4 +249,14 @@ func (sm *SuperMatcher) matchAnOrder(id uuid.UUID, amount, totalAmount *big.Int)
 	}
 
 	return true, amount
+}
+
+func (sm *SuperMatcher) ReceiveBatches(batches []*Batch) {
+	sm.Mutex.Lock()
+	defer sm.Mutex.Unlock()
+	sm.Batches = append(sm.Batches, batches...)
+}
+
+func (sm *SuperMatcher) SendBatchDemo() {
+	sm.Process()
 }

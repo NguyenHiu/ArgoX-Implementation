@@ -15,6 +15,8 @@ import (
 func (sm *SuperMatcher) SendBatch(batch *Batch) {
 	sm.Mutex.Lock()
 
+	sm.IsSent[batch.BatchID] = true
+
 	_side := "bid"
 	if batch.Side == constants.ASK {
 		_side = "ask"

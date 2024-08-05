@@ -52,9 +52,10 @@ func (m *Matcher) SendBatch(batch *Batch) {
 			m.Mux.Lock()
 			m.Batches[batch.BatchID] = batch
 			m.Mux.Unlock()
-			m.SuperMatcherInstance.Process()
+			// m.SuperMatcherInstance.Process()
 			retry = false
 			_logger.Debug("Batch::%v (OK)\n", batch.BatchID.String())
+			m.BatchStatusMapping[batch.BatchID] = VALID_BATCH
 		} else if _status == "RESIGN" && len(_validOrders) != 0 {
 			retry = true
 			retryTime += 1

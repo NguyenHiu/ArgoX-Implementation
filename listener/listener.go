@@ -329,7 +329,7 @@ func (l *Listener) WatchRevertBatch(instance *onchain.Onchain, opt *bind.WatchOp
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Revert] Batch::%v\n", id.String())
-			log.Fatal("Revert batch")
+			// log.Fatal("Revert batch")
 			// LogOrderBookOverview(instance)
 		}
 	}

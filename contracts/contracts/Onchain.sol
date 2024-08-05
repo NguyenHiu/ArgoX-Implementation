@@ -47,7 +47,7 @@ contract Onchain {
     constructor(address _token) {
         _GVNToken = _token;
         _registerFee = 1 ether;
-        _waitingTime = 10 seconds;
+        _waitingTime = 60 seconds;
         _owner = msg.sender;
     }
 
@@ -67,6 +67,8 @@ contract Onchain {
     event BatchMatchAmountAndProfit(uint256, uint256);
     event MatchedPrice(uint256);
     event BatchRawProfit(bytes16, uint256);
+    // Demo
+    event ValidMatching(bytes16);
     // --- Log Events ---
     event LogString(string);
     event LogBytes32(bytes32);
@@ -224,6 +226,9 @@ contract Onchain {
                 _validBatch[batchID].push(so);
             }
         } else {
+            emit ValidMatching(batchID);
+            emit ValidMatching(_tradeMapping[batchID]);
+
             // Is Second
             ShadowOrder[] memory fsOrders = _validBatch[_tradeMapping[batchID]];
             if (fsOrders.length > 0 && fsOrders[0].side == true) {
@@ -294,12 +299,12 @@ contract Onchain {
         // Statistical
         emit BatchTimestamp(batchID, block.timestamp);
 
-        emit AcceptBatch(batchID, price, amount, side);
         Batch memory _nb = Batch(batchID, price, amount, side, owner, sign, 0);
         _sendBatch(_nb);
     }
 
     function _sendBatch(Batch memory newBatch) internal {
+        emit AcceptBatch(newBatch.batchID, newBatch.price, newBatch.amount, newBatch.side);
         _batchMapping[newBatch.batchID] = newBatch;
     }
 

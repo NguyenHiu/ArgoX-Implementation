@@ -1,9 +1,7 @@
 package matcher
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"log"
 	"math/big"
 
@@ -11,8 +9,6 @@ import (
 	"github.com/NguyenHiu/lightning-exchange/contracts/generated/onchain"
 	"github.com/NguyenHiu/lightning-exchange/orderClient"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/google/uuid"
 )
 
@@ -53,50 +49,11 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 				continue
 			}
 
+			m.BatchStatusMapping[id] = WAITING_PROOF
+
 			if batch.Side == constants.BID {
 				_logger.Debug("Matched, amount: %v\n", batch.Amount)
 			}
-
-			onchainOrders := []onchain.OnchainOrder{}
-			for _, order := range batch.Orders {
-				trades := new(bytes.Buffer)
-				for _, trade := range order.Trades {
-					tData, err := trade.Encode_TransferBatching()
-					if err != nil {
-						_logger.Error("sending batch's detail got error, encode trade, err: %v\n", err)
-					}
-					if err := binary.Write(trades, binary.BigEndian, tData); err != nil {
-						_logger.Error("sending batch's detail, hash a trade got error, err: %v\n", err)
-					}
-				}
-				tradeHash := crypto.Keccak256Hash(trades.Bytes())
-
-				oData, err := order.OriginalOrder.Encode_TransferBatching()
-				if err != nil {
-					_logger.Error("sending batch's detail, hash original order got error, err: %v\n", err)
-				}
-				originalOrderHash := crypto.Keccak256Hash(oData)
-
-				onchainOrders = append(onchainOrders, onchain.OnchainOrder{
-					Price:             order.ShadowOrder.Price,
-					Amount:            order.ShadowOrder.Amount,
-					Side:              order.ShadowOrder.Side,
-					From:              order.ShadowOrder.From,
-					TradeHash:         tradeHash,
-					OriginalOrderHash: originalOrderHash,
-					Owner:             common.Address(*order.OriginalOrder.Owner),
-				})
-			}
-
-			// Send batch's details
-			// m.Mux.Lock()
-			m.prepareNonceAndGasPrice(0, 900000)
-			_, err := m.OnchainInstance.SubmitOrderDetails(m.Auth, vLogs.Arg0, onchainOrders)
-			if err != nil {
-				_logger.Error("Submit Error, err: %v\n", err)
-			}
-			_logger.Debug("Matcher::%v, Submit batch's details, batch::%v\n", m.ID.String()[:6], id.String())
-			// m.Mux.Unlock()
 		}
 	}
 }

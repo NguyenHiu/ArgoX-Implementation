@@ -325,6 +325,7 @@ func (m *Matcher) batching() []*Batch {
 				_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
 				log.Fatal("Batching process creates invalid order\n")
 			}
+			m.OrderStatusMapping[_order.OriginalOrder.OrderID] = BATCHED
 		}
 
 		batch.Sign(m.PrivateKey)
@@ -355,6 +356,7 @@ func (m *Matcher) batching() []*Batch {
 				_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
 				log.Fatal("Batching process creates invalid order\n")
 			}
+			m.OrderStatusMapping[_order.OriginalOrder.OrderID] = BATCHED
 		}
 
 		batch.Sign(m.PrivateKey)

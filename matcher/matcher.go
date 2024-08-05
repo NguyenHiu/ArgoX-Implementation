@@ -26,6 +26,21 @@ import (
 	ethwallet "perun.network/go-perun/backend/ethereum/wallet"
 )
 
+// Status
+const (
+	OPEN              = "OPEN"
+	PARTIAL_MATCH     = "PARTIAL_MATCH"
+	FULFILED          = "FULFILED"
+	BATCHED           = "BATCHED"
+	ACCEPTED          = "ACCEPTED"
+	CREATED           = "CREATED"
+	WAITING_PROOF     = "WAITING_PROOF"
+	REPORTED          = "REPORTED"
+	VALID_BATCH       = "VALID_BATCH"
+	WAITING_FOR_OTHER = "WAITING_FOR_OTHER"
+	REVERTED          = "REVERTED"
+)
+
 var _logger = logger.NewLogger("Matcher", logger.Green, logger.None)
 
 type ClientConfig struct {
@@ -69,10 +84,8 @@ type Matcher struct {
 
 	SuperMatcherInstance *supermatcher.SuperMatcher
 
-	// Store orders' data
-	OrderStorage []*data.OrderData
-
-	/* MATCHING ANALYSIS */
+	/// Matching Analysis
+	OrderStorage            []*data.OrderData
 	CreateTime              map[uuid.UUID]int64
 	TotalTimeLocal          int64
 	TotalMatchedAmountLocal *big.Int
@@ -82,8 +95,12 @@ type Matcher struct {
 	IsGetPriceCurve         bool
 	TotalProfitLocal        *big.Int
 	TotalRawProfitLocal     *big.Int
-	/* MATCHING ANALYSIS */
 
+	/// Demo
+	BatchesList        []*Batch
+	OrderStatusMapping map[uuid.UUID]string
+	BatchStatusMapping map[uuid.UUID]string
+	IsSent             map[uuid.UUID]bool
 }
 
 func NewMatcher(
@@ -120,47 +137,46 @@ func NewMatcher(
 	}
 
 	return &Matcher{
-		ID:            id,
-		ClientConfigs: make(map[uuid.UUID]*ClientConfig),
-		Adjudicator:   adj,
-		AssetHolders:  ethwalletAssetHolders,
-		OrderApp:      _orderApp,
-		TradeApp:      _tradeApp,
-		Stakes:        []*big.Int{stakeETH, stakeGVN},
-		EmptyStakes:   []*big.Int{new(big.Int), new(big.Int)},
-
-		BidOrders:         []*MatcherOrder{},
-		AskOrders:         []*MatcherOrder{},
-		Orders:            make(map[uuid.UUID]*tradeApp.Order),
-		ExecutedTrade:     []*tradeApp.Trade{},
-		mappingBidtoTrade: make(map[uuid.UUID][]*tradeApp.Trade),
-		mappingAskToTrade: make(map[uuid.UUID][]*tradeApp.Trade),
-
-		OnchainInstance: instance,
-		Auth:            auth,
-		Client:          clientNode,
-
-		Address:    crypto.PubkeyToAddress(_privateKey.PublicKey),
-		PrivateKey: _privateKey,
-
-		Batches: make(map[uuid.UUID]*Batch),
-
+		ID:                   id,
+		Adjudicator:          adj,
+		AssetHolders:         ethwalletAssetHolders,
+		OrderApp:             _orderApp,
+		TradeApp:             _tradeApp,
+		OnchainInstance:      instance,
+		Auth:                 auth,
+		Client:               clientNode,
+		PrivateKey:           _privateKey,
 		GavinAddress:         gavinAddress,
 		SuperMatcherInstance: supermatcherInstance,
+		Address:              crypto.PubkeyToAddress(_privateKey.PublicKey),
+		ClientConfigs:        make(map[uuid.UUID]*ClientConfig),
+		Orders:               make(map[uuid.UUID]*tradeApp.Order),
+		mappingBidtoTrade:    make(map[uuid.UUID][]*tradeApp.Trade),
+		mappingAskToTrade:    make(map[uuid.UUID][]*tradeApp.Trade),
+		Batches:              make(map[uuid.UUID]*Batch),
+		Stakes:               []*big.Int{stakeETH, stakeGVN},
+		EmptyStakes:          []*big.Int{new(big.Int), new(big.Int)},
+		BidOrders:            []*MatcherOrder{},
+		AskOrders:            []*MatcherOrder{},
+		ExecutedTrade:        []*tradeApp.Trade{},
 
-		OrderStorage: make([]*data.OrderData, 0),
-
-		/* MATCHING ANALYSIS */
+		/// Matching Analysis
+		OrderStorage:            make([]*data.OrderData, 0),
 		CreateTime:              make(map[uuid.UUID]int64),
 		TotalTimeLocal:          0,
-		TotalMatchedAmountLocal: new(big.Int),
 		NumberOfMatchedOrder:    0,
 		PriceCurveLocal:         []*big.Int{},
+		TotalMatchedAmountLocal: new(big.Int),
 		CurrentPrice:            new(big.Int),
 		IsGetPriceCurve:         false,
 		TotalProfitLocal:        big.NewInt(0),
 		TotalRawProfitLocal:     big.NewInt(0),
-		/* MATCHING ANALYSIS */
+
+		/// Demo
+		BatchesList:        []*Batch{},
+		OrderStatusMapping: make(map[uuid.UUID]string),
+		BatchStatusMapping: make(map[uuid.UUID]string),
+		IsSent:             make(map[uuid.UUID]bool),
 	}
 }
 
@@ -218,22 +234,8 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	m.ClientConfigs[userID].OrderChannel = user.OrderAppClient.OpenAppChannel(userPeer)
 	m.ClientConfigs[userID].TradeChannel = user.TradeAppClient.OpenAppChannel(userPeer)
 	go m.receiveOrder(userID)
-	// go m.goBatching()
 	return true
 }
-
-// func (m *Matcher) goBatching() {
-// 	ticker := time.NewTicker(1 * time.Second)
-// 	defer ticker.Stop()
-
-// 	for range ticker.C {
-// 		batches := m.batching()
-// 		for _, batch := range batches {
-// 			batch.Sign(m.PrivateKey)
-// 			m.SendBatch(batch)
-// 		}
-// 	}
-// }
 
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for orders := range m.ClientConfigs[userID].OrderAppClient.TriggerChannel {
@@ -265,6 +267,7 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 				Owner:     _order.Owner,
 				Signature: _order.Signature,
 			}
+			m.OrderStatusMapping[_order.OrderID] = OPEN
 
 			__order := order.Clone()
 			_newOrder := &MatcherOrder{

@@ -20,13 +20,6 @@ func (m *Matcher) addOrder(order *MatcherOrder) {
 	} else {
 		m.AskOrders = addAccordingTheOrder(order, m.AskOrders)
 	}
-	m.matching()
-	if len(m.BidOrders) >= 30 || len(m.AskOrders) >= 30 {
-		batches := m.batching()
-		for _, batch := range batches {
-			m.SendBatch(batch)
-		}
-	}
 }
 
 func (m *Matcher) Log() {
@@ -77,11 +70,6 @@ func (m *Matcher) matching() {
 		if minAmount.Cmp(askOrder.Data.Amount) == 1 {
 			minAmount = new(big.Int).Set(askOrder.Data.Amount)
 		}
-		_logger.Debug("bid's id: %v\n", bidOrder.Data.From)
-		_logger.Debug("bid's amount: %v\n", bidOrder.Data.Amount)
-		_logger.Debug("ask's id: %v\n", askOrder.Data.From)
-		_logger.Debug("ask's amount: %v\n", askOrder.Data.Amount)
-		_logger.Debug("minAmount: %v\n", minAmount)
 
 		// status:
 		//   - 0: not changed, but failed
@@ -93,12 +81,18 @@ func (m *Matcher) matching() {
 			minAmount,
 		)
 
+		_logger.Debug("bid's id: %v\n", bidOrder.Data.From)
+		_logger.Debug("bid's amount: %v\n", bidOrder.Data.Amount)
+		_logger.Debug("ask's id: %v\n", askOrder.Data.From)
+		_logger.Debug("ask's amount: %v\n", askOrder.Data.Amount)
+		_logger.Debug("minAmount: %v\n", minAmount)
+
 		if _bidChange != 2 || _askChange != 2 {
 			if _bidChange == 1 {
 				if _bidLeftAmount.Cmp(new(big.Int)) == 0 {
 					_logger.Debug("ID: %v - Order was cleared\n", bidOrder.Data.From)
 					m.BidOrders = m.BidOrders[1:]
-					delete(m.Orders, bidOrder.Data.From)
+					// delete(m.Orders, bidOrder.Data.From)
 				} else {
 					bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
 					_logger.Debug("Match fail, ID: %v, , bid left amount: %v\n", bidOrder.Data.From, _bidLeftAmount)
@@ -109,7 +103,7 @@ func (m *Matcher) matching() {
 				if _askLeftAmount.Cmp(new(big.Int)) == 0 {
 					_logger.Debug("ID: %v - Order was cleared\n", askOrder.Data.From)
 					m.AskOrders = m.AskOrders[1:]
-					delete(m.Orders, askOrder.Data.From)
+					// delete(m.Orders, askOrder.Data.From)
 				} else {
 					askOrder.Data.Amount = new(big.Int).Set(_askLeftAmount)
 					_logger.Debug("Match fail, ID: %v, ask left amount: %v\n", askOrder.Data.From, _askLeftAmount)
@@ -137,21 +131,10 @@ func (m *Matcher) matching() {
 
 		bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
 		askOrder.Data.Amount = new(big.Int).Set(_askLeftAmount)
-
-		//_logger.Debug("Matched, amount: %v\n", minAmount)
-		//_logger.Debug("Matched, amount: %v\n", minAmount)
-		//_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[bidOrder.Data.From])
-		//_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[bidOrder.Data.From]
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
-
-		// fmt.Printf("{\"ID\": \"%v\", \"Amount\": %v},", bidOrder.Data.From, minAmount)
-		// fmt.Printf("{\"ID\": \"%v\", \"Amount\": %v},", askOrder.Data.From, minAmount)
-
-		_logger.Debug("[DEBUG FLAG] %v - %v\n", bidOrder.Data.From, minAmount)
-		_logger.Debug("[DEBUG FLAG] %v - %v\n", askOrder.Data.From, minAmount)
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
 		// m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
@@ -178,20 +161,26 @@ func (m *Matcher) matching() {
 			for i, _bo := range m.BidOrders {
 				if _bo.Data.Equal(bidOrder.Data) {
 					m.BidOrders = append(m.BidOrders[:i], m.BidOrders[i+1:]...)
-					delete(m.Orders, bidOrder.Data.From)
+					// delete(m.Orders, bidOrder.Data.From)
 					break
 				}
 			}
+			m.OrderStatusMapping[bidOrder.Data.From] = FULFILED
+		} else {
+			m.OrderStatusMapping[bidOrder.Data.From] = fmt.Sprintf("PARTIAL_MATCH,%v", m.SuperMatcherInstance.GetRemainingAmount(bidOrder.Data.From))
 		}
 		if askOrder.Data.Amount.Cmp(new(big.Int)) == 0 {
 			m.NumberOfMatchedOrder += 1
 			for i, _ao := range m.AskOrders {
 				if _ao.Data.Equal(askOrder.Data) {
 					m.AskOrders = append(m.AskOrders[:i], m.AskOrders[i+1:]...)
-					delete(m.Orders, askOrder.Data.From)
+					// delete(m.Orders, askOrder.Data.From)
 					break
 				}
 			}
+			m.OrderStatusMapping[askOrder.Data.From] = FULFILED
+		} else {
+			m.OrderStatusMapping[askOrder.Data.From] = fmt.Sprintf("PARTIAL_MATCH,%v", m.SuperMatcherInstance.GetRemainingAmount(askOrder.Data.From))
 		}
 	}
 }
