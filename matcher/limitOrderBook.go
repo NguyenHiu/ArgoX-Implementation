@@ -138,23 +138,15 @@ func (m *Matcher) matching() {
 		bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
 		askOrder.Data.Amount = new(big.Int).Set(_askLeftAmount)
 
-		//_logger.Debug("Matched, amount: %v\n", minAmount)
-		//_logger.Debug("Matched, amount: %v\n", minAmount)
-		//_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[bidOrder.Data.From])
-		//_logger.Debug("Time: %v\n", time.Now().Unix()-m.CreateTime[askOrder.Data.From])
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalMatchedAmountLocal.Add(m.TotalMatchedAmountLocal, minAmount)
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[bidOrder.Data.From]
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
 
-		// fmt.Printf("{\"ID\": \"%v\", \"Amount\": %v},", bidOrder.Data.From, minAmount)
-		// fmt.Printf("{\"ID\": \"%v\", \"Amount\": %v},", askOrder.Data.From, minAmount)
-
 		_logger.Debug("[DEBUG FLAG] %v - %v\n", bidOrder.Data.From, minAmount)
 		_logger.Debug("[DEBUG FLAG] %v - %v\n", askOrder.Data.From, minAmount)
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
-		// m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
 		m.TotalProfitLocal.Add(m.TotalProfitLocal, new(big.Int).Mul(new(big.Int).Sub(bidOrder.Data.Price, askOrder.Data.Price), minAmount))
 		m.TotalRawProfitLocal.Add(m.TotalRawProfitLocal, new(big.Int).Sub(bidOrder.Data.Price, askOrder.Data.Price))
 		m.CurrentPrice = new(big.Int).Set(matchPrice)

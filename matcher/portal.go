@@ -9,12 +9,6 @@ import (
 
 func (m *Matcher) SendBatch(batch *Batch) {
 	_logger.Debug("[%v] Send batch::%v, amount: %v, side: %v, price: %v\n", m.Address.String()[:5], batch.BatchID.String()[:5], batch.Amount, batch.Side, batch.Price)
-	// for _, _order := range batch.Orders {
-	// 	if !_order.IsValidOrder(m.Address) {
-	// 		_logger.Error("Order::%v invalid signature\n", _order.OriginalOrder.OrderID.String())
-	// 		log.Fatal("error")
-	// 	}
-	// }
 
 	// Send instantly
 	orders := []*supermatcher.ExpandOrder{}

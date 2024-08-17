@@ -222,19 +222,6 @@ func (m *Matcher) OpenAppChannel(userID uuid.UUID, userPeer wire.Address) bool {
 	return true
 }
 
-// func (m *Matcher) goBatching() {
-// 	ticker := time.NewTicker(1 * time.Second)
-// 	defer ticker.Stop()
-
-// 	for range ticker.C {
-// 		batches := m.batching()
-// 		for _, batch := range batches {
-// 			batch.Sign(m.PrivateKey)
-// 			m.SendBatch(batch)
-// 		}
-// 	}
-// }
-
 func (m *Matcher) receiveOrder(userID uuid.UUID) {
 	for orders := range m.ClientConfigs[userID].OrderAppClient.TriggerChannel {
 		for _, order := range orders {

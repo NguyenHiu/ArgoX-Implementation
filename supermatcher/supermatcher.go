@@ -97,10 +97,6 @@ func (sm *SuperMatcher) Process() {
 	sm.Batches = sm.Batches[1:]
 	sm.Mutex.Unlock()
 
-	// The batch is already validated when being appended to the sm.Batches
-
-	// _logger.Debug("Batch::%v is valid\n", batch.BatchID.String()[:6])
-
 	// Send batch to smart contract
 	sm.SendBatch(batch)
 }

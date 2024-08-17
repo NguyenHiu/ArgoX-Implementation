@@ -30,7 +30,6 @@ import (
 var _logger = logger.NewLogger("Main", logger.Red, logger.Bold)
 
 func main() {
-	fmt.Println("[")
 	MAIN_START_TIME := time.Now()
 
 	/// Get user's configurations
@@ -207,25 +206,6 @@ func main() {
 					break
 				}
 
-				/** DEBUG */
-				// var _id uuid.UUID
-				// _rand := rand.Intn(3)
-				// if _rand == 0 {
-				// 	_id = matchers[0].ID
-				// } else if _rand == 1 {
-				// 	_id = matchers[1].ID
-				// } else {
-				// 	_id = matchers[rand.Intn(len(alice.Connections)-2)+2].ID
-				// }
-				// NoOrderSentToEachMatcher[_id] += 1
-				// alice.SendNewOrders(
-				// 	_id,
-				// 	[]*orderApp.Order{newOrder},
-				// )
-				// <-time.After(time.Millisecond * 50)
-				// j += 1
-				/** DEBUG */
-
 				for _id, _conn := range alice.Connections {
 					if j >= constants.SEND_TO {
 						break
@@ -324,21 +304,21 @@ func main() {
 		matcher.IsGetPriceCurve = false
 	}
 
-	// // Payout.
-	// _logger.Info("Settle\n")
-	// for _, matcher := range matchers {
-	// 	if _, _ok := alice.Connections[matcher.ID]; _ok {
-	// 		alice.Settle(matcher.ID)
-	// 		matcher.Settle(alice.ID)
-	// 	}
-	// }
+	// Payout.
+	_logger.Info("Settle\n")
+	for _, matcher := range matchers {
+		if _, _ok := alice.Connections[matcher.ID]; _ok {
+			alice.Settle(matcher.ID)
+			matcher.Settle(alice.ID)
+		}
+	}
 
-	// // Cleanup.
-	// _logger.Info("Shutdown\n")
-	// for _, matcher := range matchers {
-	// 	alice.Shutdown(matcher.ID)
-	// 	matcher.Shutdown(alice.ID)
-	// }
+	// Cleanup.
+	_logger.Info("Shutdown\n")
+	for _, matcher := range matchers {
+		alice.Shutdown(matcher.ID)
+		matcher.Shutdown(alice.ID)
+	}
 
 	//export order
 	{
@@ -443,5 +423,4 @@ func main() {
 	for _id, _num := range NoOrderSentToEachMatcher {
 		_logger.Debug("Number of orders sent to matcher %v: %v\n", _id, _num)
 	}
-	fmt.Println("]")
 }
