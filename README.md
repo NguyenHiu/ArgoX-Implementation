@@ -1,19 +1,22 @@
-# lightning-exchange-perun 
+# ArgoX Protocol
+## 1. Introduction
+`ArgoX Protocol` is a decentralized exchange based on Limit Order Book. With the combination of Lightning network (State channel) and Batching mechanism to help increasing the speed, throughput of the exchange. 
 
-## How to run `run.sh` script
+## 2. Execution
+### 2.1. With `run.sh` script
 1. Access to `data` folder
 2. Run the script with `./run.sh`
 3. Waiting for the results
 
-## How to run manually
-### Run ganache 
+### 2.2. Run manually
+#### 2.2.1 Run ganache 
 ```
 ganache -a 200 -m '' -e 99999999999 --chain.chainId <CHAIN ID> --p <PORT>
 ```
 <b>Example</b>, `ganache -a 200 -m '' -e 99999999999 --chain.chainId 1337 --p 8545>`
 
 
-### Run protocol
+#### 2.2.2. Run protocol
 ```
 go run . <PORT> <CHAIN ID> <NUMBER OF MATCHERS> <SEND TO> run <FILE TO LOAD ORDERS> <FOLDER TO SAVE RESULTS>
 ```
