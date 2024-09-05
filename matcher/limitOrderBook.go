@@ -12,8 +12,6 @@ import (
 
 // implement limit order book logic
 
-// bid: 1 --> 2
-// ask: 2 --> 1
 func (m *Matcher) addOrder(order *MatcherOrder) {
 	if order.Data.Side == constants.BID {
 		m.BidOrders = addAccordingTheOrder(order, m.BidOrders)
@@ -81,18 +79,11 @@ func (m *Matcher) matching() {
 			minAmount,
 		)
 
-		_logger.Debug("bid's id: %v\n", bidOrder.Data.From)
-		_logger.Debug("bid's amount: %v\n", bidOrder.Data.Amount)
-		_logger.Debug("ask's id: %v\n", askOrder.Data.From)
-		_logger.Debug("ask's amount: %v\n", askOrder.Data.Amount)
-		_logger.Debug("minAmount: %v\n", minAmount)
-
 		if _bidChange != 2 || _askChange != 2 {
 			if _bidChange == 1 {
 				if _bidLeftAmount.Cmp(new(big.Int)) == 0 {
 					_logger.Debug("ID: %v - Order was cleared\n", bidOrder.Data.From)
 					m.BidOrders = m.BidOrders[1:]
-					// delete(m.Orders, bidOrder.Data.From)
 				} else {
 					bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
 					_logger.Debug("Match fail, ID: %v, , bid left amount: %v\n", bidOrder.Data.From, _bidLeftAmount)
@@ -103,7 +94,6 @@ func (m *Matcher) matching() {
 				if _askLeftAmount.Cmp(new(big.Int)) == 0 {
 					_logger.Debug("ID: %v - Order was cleared\n", askOrder.Data.From)
 					m.AskOrders = m.AskOrders[1:]
-					// delete(m.Orders, askOrder.Data.From)
 				} else {
 					askOrder.Data.Amount = new(big.Int).Set(_askLeftAmount)
 					_logger.Debug("Match fail, ID: %v, ask left amount: %v\n", askOrder.Data.From, _askLeftAmount)
@@ -111,22 +101,6 @@ func (m *Matcher) matching() {
 			}
 
 			continue
-		}
-
-		if _bidLeftAmount.Cmp(new(big.Int).Sub(bidOrder.Data.Amount, minAmount)) == 1 {
-			s := "bid\n"
-			for _, o := range m.mappingBidtoTrade[bidOrder.Data.From] {
-				s = fmt.Sprintf("%vexecuted trade: %v", s, o.Amount)
-			}
-
-			log.Fatalf("INVALID MATCHING BID\nID: %v\n_bidLeftAmount: %v\nbidOrder.Data.Amount: %v\nminAmount: %v\ntraded: %v\noriginal_amount: %v\n", bidOrder.Data.From, _bidLeftAmount, bidOrder.Data.Amount, minAmount, s, m.Orders[bidOrder.Data.From].Amount)
-		}
-		if _askLeftAmount.Cmp(new(big.Int).Sub(askOrder.Data.Amount, minAmount)) == 1 {
-			s := "ask\n"
-			for _, o := range m.mappingBidtoTrade[bidOrder.Data.From] {
-				s = fmt.Sprintf("%vexecuted trade: %v", s, o.Amount)
-			}
-			log.Fatalf("INVALID MATCHING ASK\nID: %v\n_askLeftAmount: %v\naskOrder.Data.Amount: %v\nminAmount: %v\ntraded: %v\noriginal_amount: %v\n", askOrder.Data.From, _askLeftAmount, askOrder.Data.Amount, minAmount, s, m.Orders[askOrder.Data.From].Amount)
 		}
 
 		bidOrder.Data.Amount = new(big.Int).Set(_bidLeftAmount)
@@ -137,7 +111,6 @@ func (m *Matcher) matching() {
 		m.TotalTimeLocal += time.Now().Unix() - m.CreateTime[askOrder.Data.From]
 
 		matchPrice := new(big.Int).Div(new(big.Int).Add(bidOrder.Data.Price, askOrder.Data.Price), big.NewInt(2))
-		// m.PriceCurveLocal = append(m.PriceCurveLocal, matchPrice)
 		m.TotalProfitLocal.Add(m.TotalProfitLocal, new(big.Int).Mul(new(big.Int).Sub(bidOrder.Data.Price, askOrder.Data.Price), minAmount))
 		m.TotalRawProfitLocal.Add(m.TotalRawProfitLocal, new(big.Int).Sub(bidOrder.Data.Price, askOrder.Data.Price))
 		m.CurrentPrice = new(big.Int).Set(matchPrice)

@@ -1,8 +1,0 @@
-[
-  { "Price": 100, "Amount": 5, "Side": true },
-  { "Price": 110, "Amount": 10, "Side": true },
-  { "Price": 120, "Amount": 15, "Side": true },
-  { "Price": 130, "Amount": 20, "Side": true },
-  { "Price": 140, "Amount": 25, "Side": true },
-  { "Price": 200, "Amount": 30, "Side": false }
-]

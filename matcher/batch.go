@@ -58,31 +58,6 @@ func (m *Matcher) NewBatch(_price, _amount *big.Int, _side bool, _orders []*Matc
 			OriginalOrder: m.Orders[order.Data.From],
 		}
 
-		if _expandOrder.OriginalOrder.Amount.Cmp(new(big.Int).Add(_totalTrade, order.Data.Amount)) == -1 {
-			_logger.Debug("order.Data.From: %v\n", order.Data.From)
-			_logger.Debug("Original's id: %v\n", _expandOrder.OriginalOrder.OrderID.String())
-			_logger.Debug("Original: %v, %v, %v\n", _expandOrder.OriginalOrder.OrderID.String(), _expandOrder.OriginalOrder.Price, _expandOrder.OriginalOrder.Amount)
-			_logger.Debug("order.Data.Amount: %v\n", order.Data.Amount)
-			_logger.Debug("Shadow: %v, %v\n", _expandOrder.ShadowOrder.Price, _expandOrder.ShadowOrder.Amount)
-			_logger.Debug("_totalTrade: %v\n", _totalTrade)
-			log.Fatal("Check creates an invalid batch\n")
-		}
-
-		if !_expandOrder.IsValidOrder(m.Address) {
-			for _, _trade := range _expandOrder.Trades {
-				_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
-			}
-			_logger.Debug("Original: %v, %v, %v\n", _expandOrder.OriginalOrder.OrderID.String(), _expandOrder.OriginalOrder.Price, _expandOrder.OriginalOrder.Amount)
-			_logger.Debug("Shadow: %v, %v\n", _expandOrder.ShadowOrder.Price, _expandOrder.ShadowOrder.Amount)
-			_totalTrade := new(big.Int)
-			for _, _tradeOrder := range _expandOrder.Trades {
-				_totalTrade.Add(_totalTrade, _tradeOrder.Amount)
-			}
-			_logger.Debug("order.Data.Amount: %v\n", order.Data.Amount)
-			_logger.Debug("_totalTrade: %v\n", _totalTrade)
-			log.Fatal("NewBatch creates an invalid batch\n")
-		}
-
 		orders = append(orders, _expandOrder)
 	}
 
@@ -271,36 +246,6 @@ func (m *Matcher) batching() []*Batch {
 	m.Mux.Lock()
 	defer m.Mux.Unlock()
 
-	// /** TEST STUPID BATCHING */
-	// if len(m.BidOrders) != 0 {
-	// 	_orders := []*MatcherOrder{}
-	// 	_amount := big.NewInt(0)
-	// 	_price := m.BidOrders[0].Data.Price
-	// 	_originalLength := len(m.BidOrders)
-	// 	for len(m.BidOrders) > _originalLength/2 {
-	// 		_amount.Add(_amount, m.BidOrders[0].Data.Amount)
-	// 		_orders = append(_orders, m.BidOrders[0].Clone())
-	// 		m.BidOrders = m.BidOrders[1:]
-	// 	}
-	// 	bidBatch := m.NewBatch(_price, _amount, constants.BID, _orders)
-	// 	bidBatch.Sign(m.PrivateKey)
-	// 	batches = append(batches, bidBatch)
-	// }
-	// if len(m.AskOrders) != 0 {
-	// 	_orders := []*MatcherOrder{}
-	// 	_amount := big.NewInt(0)
-	// 	_price := m.AskOrders[0].Data.Price
-	// 	_originalLength := len(m.AskOrders)
-	// 	for len(m.AskOrders) > _originalLength/2 {
-	// 		_amount.Add(_amount, m.AskOrders[0].Data.Amount)
-	// 		_orders = append(_orders, m.AskOrders[0].Clone())
-	// 		m.AskOrders = m.AskOrders[1:]
-	// 	}
-	// 	askBatch := m.NewBatch(_price, _amount, constants.BID, _orders)
-	// 	askBatch.Sign(m.PrivateKey)
-	// 	batches = append(batches, askBatch)
-	// }
-
 	threshold := len(m.BidOrders) / 4
 	for len(m.BidOrders) > threshold {
 		ord := m.BidOrders[0]
@@ -317,14 +262,6 @@ func (m *Matcher) batching() []*Batch {
 		batch := m.NewBatch(ord.Data.Price, amount, ord.Data.Side, orders)
 
 		for _, _order := range batch.Orders {
-			if !_order.IsValidOrder(m.Address) || _order.OriginalOrder.Amount.Cmp(_order.ShadowOrder.Amount) == -1 {
-				for _, _trade := range _order.Trades {
-					_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
-				}
-				_logger.Debug("Original: %v, %v, %v\n", _order.OriginalOrder.OrderID.String(), _order.OriginalOrder.Price, _order.OriginalOrder.Amount)
-				_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
-				log.Fatal("Batching process creates invalid order\n")
-			}
 			m.OrderStatusMapping[_order.OriginalOrder.OrderID] = BATCHED
 		}
 
@@ -348,14 +285,6 @@ func (m *Matcher) batching() []*Batch {
 		batch := m.NewBatch(ord.Data.Price, amount, ord.Data.Side, orders)
 
 		for _, _order := range batch.Orders {
-			if !_order.IsValidOrder(m.Address) || _order.OriginalOrder.Amount.Cmp(_order.ShadowOrder.Amount) == -1 {
-				for _, _trade := range _order.Trades {
-					_logger.Debug("Trade: %v, %v, %v\n", _trade.TradeID.String(), _trade.Price, _trade.Amount)
-				}
-				_logger.Debug("Original: %v, %v, %v\n", _order.OriginalOrder.OrderID.String(), _order.OriginalOrder.Price, _order.OriginalOrder.Amount)
-				_logger.Debug("Shadow: %v, %v\n", _order.ShadowOrder.Price, _order.ShadowOrder.Amount)
-				log.Fatal("Batching process creates invalid order\n")
-			}
 			m.OrderStatusMapping[_order.OriginalOrder.OrderID] = BATCHED
 		}
 
@@ -363,7 +292,7 @@ func (m *Matcher) batching() []*Batch {
 		batches = append(batches, batch)
 	}
 
-	_logger.Debug("got %v batch(es)\n", len(batches))
+	_logger.Debug("Got %v batch(es)\n", len(batches))
 	return batches
 }
 

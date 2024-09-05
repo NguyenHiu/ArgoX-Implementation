@@ -82,5 +82,5 @@ func (c *AppClient) HandleUpdate(cur *channel.State, next client.ChannelUpdate, 
 
 // HandleAdjudicatorEvent is the callback for smart contract events.
 func (c *AppClient) HandleAdjudicatorEvent(e channel.AdjudicatorEvent) {
-	// _logger.Info("Adjudicator event: type = %T, client = %v\n", e, c.account)
+	_logger.Info("Adjudicator event: type = %T, client = %v\n", e, c.account)
 }

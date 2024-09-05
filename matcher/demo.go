@@ -158,14 +158,12 @@ func (m *Matcher) SendBatchDetails(batchID uuid.UUID) {
 	}
 
 	// Send batch's details
-	// m.Mux.Lock()
 	m.prepareNonceAndGasPrice(0, 900000)
 	_, err := m.OnchainInstance.SubmitOrderDetails(m.Auth, batchID, onchainOrders)
 	if err != nil {
 		_logger.Error("Submit Error, err: %v\n", err)
 	}
 	_logger.Debug("Matcher::%v, Submit batch's details, batch::%v\n", m.ID.String()[:6], batchID.String())
-	// m.Mux.Unlock()
 }
 
 func (m *Matcher) WatchValidMatching(instance *onchain.Onchain, opt *bind.WatchOpts) {

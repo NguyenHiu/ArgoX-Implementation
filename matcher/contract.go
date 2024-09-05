@@ -41,7 +41,6 @@ func (m *Matcher) watchFullfilEvent(opts *bind.WatchOpts) {
 			log.Fatal(err)
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
-			// _logger.Debug("Matcher::%v receive an fullfill event batch::%v\n", m.ID.String()[:6], id.String())
 			m.Mux.Lock()
 			batch, ok := m.Batches[id]
 			m.Mux.Unlock()

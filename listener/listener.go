@@ -17,7 +17,6 @@ import (
 
 var _logger = logger.NewLogger("Listener", logger.Yellow, logger.Bold)
 
-// TODO: Collect Time & Matched Amount & Price Onchain
 type Listener struct {
 	TotalTimeOnchain          int
 	TotalMatchedAmountOnchain *big.Int
@@ -329,8 +328,6 @@ func (l *Listener) WatchRevertBatch(instance *onchain.Onchain, opt *bind.WatchOp
 		case vLogs := <-logs:
 			id, _ := uuid.FromBytes(vLogs.Arg0[:])
 			_logger.Info("[Revert] Batch::%v\n", id.String())
-			// log.Fatal("Revert batch")
-			// LogOrderBookOverview(instance)
 		}
 	}
 }
@@ -454,49 +451,3 @@ func (l *Listener) WatchLogRecoverError(instance *onchain.Onchain, opt *bind.Wat
 		}
 	}
 }
-
-// func LogOrderBookOverview(instance *onchain.Onchain) {
-// 	bidBatches, _ := instance.GetBidOrders(&bind.CallOpts{Context: context.Background()})
-// 	askBatches, _ := instance.GetAskOrders(&bind.CallOpts{Context: context.Background()})
-// 	zero := &big.Int{}
-// 	s := ""
-// 	price := big.NewInt(0)
-// 	amount := big.NewInt(0)
-
-// 	s += "(Ask)\n"
-// 	for i := len(askBatches) - 1; i >= 0; i-- {
-// 		if price.Cmp(zero) == 0 {
-// 			price = askBatches[i].Price
-// 			amount = askBatches[i].Amount
-// 		} else if price.Cmp(askBatches[i].Price) == 0 {
-// 			amount = new(big.Int).Add(amount, askBatches[i].Amount)
-// 		} else {
-// 			s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-// 			price = zero
-// 		}
-// 	}
-// 	if price.Cmp(zero) != 0 {
-// 		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-// 		price = zero
-// 	}
-
-// 	s += "\t-----------------------\n"
-
-// 	s += "(Bid)\n"
-// 	for _, batch := range bidBatches {
-// 		if price.Cmp(zero) == 0 {
-// 			price = batch.Price
-// 			amount = batch.Amount
-// 		} else if price.Cmp(batch.Price) == 0 {
-// 			amount = new(big.Int).Add(amount, batch.Amount)
-// 		} else {
-// 			s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-// 			price = zero
-// 		}
-// 	}
-// 	if price.Cmp(zero) != 0 {
-// 		s += "\t" + price.String() + ";\t" + amount.String() + "\n"
-// 	}
-
-// 	_logger.Debug("Overview:\n%v\n", s)
-// }

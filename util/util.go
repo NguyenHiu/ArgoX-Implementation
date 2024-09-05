@@ -114,33 +114,6 @@ func DeployCustomSC(nodeURL string, chainID uint64, prvkey string) (common.Addre
 	return token, onchain
 }
 
-// // balanceLogger is a utility for logging client balances.
-// type balanceLogger struct {
-// 	ethClient *ethclient.Client
-// }
-
-// // newBalanceLogger creates a new balance logger for the specified ledger.
-// func NewBalanceLogger(chainURL string) balanceLogger {
-// 	c, err := ethclient.Dial(chainURL)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return balanceLogger{ethClient: c}
-// }
-
-// // LogBalances prints the balances of the specified clients.
-// func (l balanceLogger) LogBalances(clients ...*client.AppClient) {
-// 	bals := make([]*big.Float, len(clients))
-// 	for i, c := range clients {
-// 		bal, err := l.ethClient.BalanceAt(context.TODO(), c.WalletAddress(), nil)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-// 		bals[i] = client.WeiToEth(bal)
-// 	}
-// 	log.Println("Client balances (ETH):", bals)
-// }
-
 // The contract uses Openzeppelin smart contract to verify ECDSA.
 // The Openzeppelin ECDSA contract uses V = {27, 28}
 // However, `crypto` packages in Golang uses V = {0, 1}

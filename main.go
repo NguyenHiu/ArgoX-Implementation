@@ -117,21 +117,6 @@ func main() {
 	_listenerInstance.IsGetPriceCurve = true
 	go _listenerInstance.GetPriceCurve()
 
-	// // Send orders
-	// _FILENAME_ := "./demo_orders_1.json"
-	// _logger.Debug("Send Orders...\n")
-	// orders, _ := data.LoadOrders(_FILENAME_)
-	// for _, order := range orders {
-	// 	newOrder := orderApp.NewOrder(
-	// 		big.NewInt(int64(order.Price)),
-	// 		big.NewInt(int64(order.Amount)),
-	// 		order.Side,
-	// 		wallet.AsWalletAddr(alice.Address),
-	// 	)
-	// 	newOrder.Sign(alice.PrivateKey)
-	// 	alice.SendNewOrders(matchers[0].ID, []*orderApp.Order{newOrder})
-	// }
-
 	_server := server.NewServer(
 		7000,
 		alice,
@@ -142,42 +127,4 @@ func main() {
 		w,
 	)
 	_server.Start()
-
-	// Create Final Order
-	// _logger.Debug("Done sending orders phase.\n")
-	// _logger.Debug("Waiting 10 seconds for sending end orders...\n")
-	// <-time.After(time.Second * 10)
-
-	// _finalOrder, err := orderApp.EndOrder(constants.KEY_ALICE)
-	// if err != nil {
-	// 	_logger.Error("create an end order is fail, err: %v\n", err)
-	// }
-	// for _id := range alice.Connections {
-	// 	alice.SendNewOrders(_id, []*orderApp.Order{_finalOrder})
-	// }
-
-	// _logger.Debug("Waiting 10 seconds before closing...\n")
-	// <-time.After(time.Second * 10)
-
-	// // Stop collect price curves
-	// _listenerInstance.IsGetPriceCurve = false
-	// for _, matcher := range matchers {
-	// 	matcher.IsGetPriceCurve = false
-	// }
-
-	// // Payout.
-	// _logger.Info("Settle\n")
-	// for _, matcher := range matchers {
-	// 	if _, _ok := alice.Connections[matcher.ID]; _ok {
-	// 		alice.Settle(matcher.ID)
-	// 		matcher.Settle(alice.ID)
-	// 	}
-	// }
-
-	// // Cleanup.
-	// _logger.Info("Shutdown\n")
-	// for _, matcher := range matchers {
-	// 	alice.Shutdown(matcher.ID)
-	// 	matcher.Shutdown(alice.ID)
-	// }
 }

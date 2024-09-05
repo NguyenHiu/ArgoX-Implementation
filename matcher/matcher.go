@@ -280,16 +280,6 @@ func (m *Matcher) receiveOrder(userID uuid.UUID) {
 				Owner: userID,
 			}
 
-			if _newOrder.Data.Amount.Cmp(order.Amount) != 0 {
-				_logger.Debug("Damn, it;s fking wrong\n")
-				log.Fatal("SUPER ERROR")
-			}
-
-			if _newOrder.Data.From.String() != order.OrderID.String() {
-				_logger.Debug("Damn, it;s fking wrong (ID) \n")
-				log.Fatal("SUPER ERROR")
-			}
-
 			m.addOrder(_newOrder)
 
 			// Used to export orders to file
