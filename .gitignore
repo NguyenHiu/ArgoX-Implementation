@@ -17,6 +17,7 @@ test_*
 
 # Dependency directories
 vendor/
+!contracts/perun-eth-contracts/vendor/
 node_modules/
 
 # Build output
@@ -38,9 +39,7 @@ bin/
 .DS_Store
 Thumbs.db
 
-contracts/perun-eth-contracts
-contracts/openzeppelin-contracts
-data/storage
+data/storage/*.json
 
 # Ignore everything in the data folder
 data/*

@@ -23,6 +23,8 @@ handle_ctrl_c() {
 trap cleanup EXIT
 trap handle_ctrl_c SIGINT
 
+mkdir -p data/storage
+
 for n in "${no_order[@]}"
 do
     echo Running $n orders...
