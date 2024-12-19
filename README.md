@@ -1,10 +1,10 @@
 # ArgoX Protocol Implementation
 ## 1. Introduction
-`ArgoX Protocol` is a decentralized exchange based on Limit Order Book. With the combination of Lightning network (State channel) and Batching mechanism to help increasing the speed, throughput and reduce the gas usage of the exchange. *This project has not been published yet.*
+`ArgoX Protocol` is a decentralized exchange based on the Limit Order Book. The combination of the Lightning network (State channel) and Batching mechanism helps increase the speed and throughput and reduce the gas usage of the exchange. *This project has not been published yet.*
 
 This repository is a Go implementation of the `ArgoX Protocol`. We have kept the system the same as the protocol but have made some simplifications to make it easier to implement.
 
-We uses `Perun` - a state channel framework in Ethereum, as our State channel in the communication between an User and a Matcher. For more details, check this repo on GitHub: [`github.com/hyperledger-labs/go-perun`](https://github.com/hyperledger-labs/go-perun)
+We use `Perun` - a state channel framework in Ethereum- as our state channel for communication between a user and a matcher. For more details, check this repo on GitHub: [`github.com/hyperledger-labs/go-perun`](https://github.com/hyperledger-labs/go-perun)
 
 ## 2. Architecture Overview
 ![Overview of the proposed hybrid exchange protocol architecture](./Architecture.png)
